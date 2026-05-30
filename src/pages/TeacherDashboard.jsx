@@ -308,9 +308,14 @@ export default function TeacherDashboard() {
       <div className={`absolute bottom-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`}></div>
 
       <nav className={`backdrop-blur-2xl shadow-sm border-b px-8 py-4 flex justify-between items-center z-10 relative transition-colors duration-500 ${navBg}`}>
-        <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition" onClick={() => { setActiveTab('dashboard'); setSearchQuery(''); setFilterGrade('All'); }}>
-          <img src="/logo.png" alt="SmartQuiz Logo" className="h-16 object-contain" />
-          <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz Educator</h1>
+        <div className="flex items-center gap-4 cursor-pointer group" onClick={() => { setActiveTab('dashboard'); setSearchQuery(''); setFilterGrade('All'); }} role="button" tabIndex="0" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab('dashboard'); setSearchQuery(''); setFilterGrade('All'); } }} title="Go to Dashboard">
+          <img 
+            src="/assets/logo.png" 
+            alt="SmartQuiz Logo" 
+            className="h-10 md:h-10 object-contain transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
+            loading="lazy"
+          />
+          <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r transition-transform duration-300 group-hover:scale-105 origin-left ${titleGradient}`}>SmartQuiz Educator</h1>
         </div>
         <div className="flex items-center gap-4 mr-16">
           <span className={`font-bold px-4 py-2 rounded-full border ${isDarkMode ? 'bg-teal-500/10 border-teal-500/20 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>Instructor: {username}</span>
