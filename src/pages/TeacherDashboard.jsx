@@ -308,7 +308,7 @@ export default function TeacherDashboard() {
       <div className={`absolute bottom-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`}></div>
 
       <nav className={`backdrop-blur-2xl shadow-sm border-b px-8 py-4 flex justify-between items-center z-10 relative transition-colors duration-500 ${navBg}`}>
-        <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
+        <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition" onClick={() => { setActiveTab('dashboard'); setSearchQuery(''); setFilterGrade('All'); }}>
           <img src="/logo.png" alt="SmartQuiz Logo" className="h-16 object-contain" />
           <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz Educator</h1>
         </div>
