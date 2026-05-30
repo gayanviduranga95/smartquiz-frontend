@@ -205,8 +205,13 @@ export default function StudentDashboard() {
       {/* GLASSMORPHISM SIDEBAR */}
       <aside className={`w-64 backdrop-blur-2xl border-r flex flex-col hidden md:flex z-10 shadow-2xl transition-colors duration-500 ${sidebarBg}`}>
         <div className={`p-6 border-b ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
-          <p className={`text-xs font-bold mt-1 uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student Portal</p>
+          <div className="flex items-center gap-3 mb-3 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
+            <img src="/logo.png" alt="SmartQuiz Logo" className="h-8 object-contain" />
+            <div>
+              <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
+              <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student Portal</p>
+            </div>
+          </div>
         </div>
         <div className={`p-6 m-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 shadow-[0_0_30px_rgba(20,184,166,0.1)]' : 'bg-white border-slate-200 shadow-md'}`}>
            <p className={`font-bold text-xs uppercase tracking-widest mb-1 ${isDarkMode ? 'text-teal-300/70' : 'text-teal-600'}`}>Total XP</p>
@@ -222,6 +227,15 @@ export default function StudentDashboard() {
       </aside>
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto z-10 relative pb-24 md:pb-8">
+        {/* MOBILE HEADER */}
+        <div className="md:hidden mb-6 flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
+          <img src="/logo.png" alt="SmartQuiz Logo" className="h-10 object-contain" />
+          <div>
+            <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
+            <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student</p>
+          </div>
+        </div>
+
         {reviewQuiz ? (
            <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-8 duration-500">
              <button onClick={closeQuiz} className={`font-bold mb-6 transition flex items-center gap-2 ${isDarkMode ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-700'}`}>← Back to Modules</button>

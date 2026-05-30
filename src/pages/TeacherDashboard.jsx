@@ -308,8 +308,11 @@ export default function TeacherDashboard() {
       <div className={`absolute bottom-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`}></div>
 
       <nav className={`backdrop-blur-2xl shadow-sm border-b px-8 py-4 flex justify-between items-center z-10 relative transition-colors duration-500 ${navBg}`}>
-        <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz Educator</h1>
-        <div className="flex items-center gap-4 mr-16"> {/* Added mr-16 to avoid overlapping with theme toggle */}
+        <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
+          <img src="/logo.png" alt="SmartQuiz Logo" className="h-10 object-contain" />
+          <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz Educator</h1>
+        </div>
+        <div className="flex items-center gap-4 mr-16">
           <span className={`font-bold px-4 py-2 rounded-full border ${isDarkMode ? 'bg-teal-500/10 border-teal-500/20 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>Instructor: {username}</span>
           <button onClick={() => setIsProfileModalOpen(true)} className={`text-xl p-2 rounded-full transition ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`} title="Profile Settings">⚙️</button>
           <button onClick={() => navigate('/')} className={`text-sm font-bold transition ml-2 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}`}>Log Out</button>
