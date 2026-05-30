@@ -206,7 +206,7 @@ export default function StudentDashboard() {
       <aside className={`w-64 backdrop-blur-2xl border-r flex flex-col hidden md:flex z-10 shadow-2xl transition-colors duration-500 ${sidebarBg}`}>
         <div className={`p-6 border-b ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
           <div className="flex items-center gap-3 mb-3 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
-            <img src="/logo.png" alt="SmartQuiz Logo" className="h-8 object-contain" />
+            <img src="/logo.png" alt="SmartQuiz Logo" className="h-12 object-contain" />
             <div>
               <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
               <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student Portal</p>
@@ -229,7 +229,7 @@ export default function StudentDashboard() {
       <main className="flex-1 p-4 md:p-8 overflow-y-auto z-10 relative pb-24 md:pb-8">
         {/* MOBILE HEADER */}
         <div className="md:hidden mb-6 flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
-          <img src="/logo.png" alt="SmartQuiz Logo" className="h-10 object-contain" />
+          <img src="/logo.png" alt="SmartQuiz Logo" className="h-14 object-contain" />
           <div>
             <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
             <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student</p>

@@ -309,7 +309,7 @@ export default function TeacherDashboard() {
 
       <nav className={`backdrop-blur-2xl shadow-sm border-b px-8 py-4 flex justify-between items-center z-10 relative transition-colors duration-500 ${navBg}`}>
         <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
-          <img src="/logo.png" alt="SmartQuiz Logo" className="h-10 object-contain" />
+          <img src="/logo.png" alt="SmartQuiz Logo" className="h-16 object-contain" />
           <h1 className={`text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz Educator</h1>
         </div>
         <div className="flex items-center gap-4 mr-16">
