@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function TeacherDashboard() {
   const location = useLocation();
@@ -11,13 +11,30 @@ export default function TeacherDashboard() {
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('manage-quizzes'); 
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterGrade, setFilterGrade] = useState('All');
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [studentFilterPerformance, setStudentFilterPerformance] = useState('All'); 
 
   // --- Student Data ---
   const [enrollmentRequests, setEnrollmentRequests] = useState([]);
   const [studentScores, setStudentScores] = useState([]);
   const [myQuizzes, setMyQuizzes] = useState([]);
-  const [editingQuiz, setEditingQuiz] = useState(null); 
+  const [editingQuiz, setEditingQuiz] = useState(null);
+  
+  // --- Analytics Data ---
+  const [analytics, setAnalytics] = useState({
+    totalQuizzes: 0,
+    totalStudents: 0,
+    totalAttempts: 0,
+    averageScore: 0,
+    pendingRequests: 0
+  });
+  const [topStudents, setTopStudents] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([])
 
   // --- Hybrid Builder State ---
   const [selectedFile, setSelectedFile] = useState(null);
@@ -46,6 +63,46 @@ export default function TeacherDashboard() {
     fetchScores();
     fetchMyQuizzes();
   }, [userId, navigate]);
+
+  // Calculate analytics whenever data changes
+  useEffect(() => {
+    const totalAttempts = studentScores.length;
+    const averageScore = studentScores.length > 0 
+      ? (studentScores.reduce((sum, s) => sum + (s.score / s.totalQuestions) * 100, 0) / studentScores.length).toFixed(1)
+      : 0;
+    
+    const uniqueStudents = new Set(studentScores.map(s => s.studentId?._id)).size;
+    
+    setAnalytics({
+      totalQuizzes: myQuizzes.length,
+      totalStudents: uniqueStudents,
+      totalAttempts,
+      averageScore,
+      pendingRequests: enrollmentRequests.filter(r => r.status === 'pending').length
+    });
+    
+    // Get top 3 students
+    const studentPerformance = {};
+    studentScores.forEach(score => {
+      const studentId = score.studentId?._id;
+      if (!studentPerformance[studentId]) {
+        studentPerformance[studentId] = {
+          name: score.studentId?.fullName || score.studentId?.username,
+          totalScore: 0,
+          attempts: 0
+        };
+      }
+      studentPerformance[studentId].totalScore += (score.score / score.totalQuestions) * 100;
+      studentPerformance[studentId].attempts += 1;
+    });
+    
+    const topThree = Object.entries(studentPerformance)
+      .map(([id, data]) => ({ id, ...data, average: (data.totalScore / data.attempts).toFixed(1) }))
+      .sort((a, b) => b.average - a.average)
+      .slice(0, 3);
+    
+    setTopStudents(topThree);
+  }, [studentScores, myQuizzes, enrollmentRequests]);
 
   const fetchRequests = async () => {
     const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/teacher-requests/${userId}`);
@@ -85,6 +142,13 @@ export default function TeacherDashboard() {
     } catch (error) { console.error(error); }
   };
 
+  const handleApprove = async (enrollmentId) => {
+    try {
+      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/approve/${enrollmentId}`, { method: 'PUT' });
+      if (res.ok) fetchRequests();
+    } catch (error) { console.error(error); }
+  };
+
   const handleSaveEdit = async () => {
     try {
       await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/${editingQuiz._id}`, {
@@ -119,10 +183,22 @@ export default function TeacherDashboard() {
     });
   };
 
-  const handleApprove = async (enrollmentId) => {
-    const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/approve/${enrollmentId}`, { method: 'PUT' });
-    if (res.ok) fetchRequests();
-  };
+  // Filter functions
+  const filteredQuizzes = myQuizzes.filter(quiz => {
+    const matchesSearch = quiz.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGrade = filterGrade === 'All' || quiz.grade === filterGrade;
+    return matchesSearch && matchesGrade;
+  });
+
+  const filteredStudentScores = studentScores.filter(score => {
+    const matchesSearch = (score.studentId?.fullName || score.studentId?.username).toLowerCase().includes(studentSearchQuery.toLowerCase());
+    const percentage = (score.score / score.totalQuestions) * 100;
+    let matchesPerformance = true;
+    if (studentFilterPerformance === 'Excellent') matchesPerformance = percentage >= 80;
+    else if (studentFilterPerformance === 'Good') matchesPerformance = percentage >= 60 && percentage < 80;
+    else if (studentFilterPerformance === 'Needs Improvement') matchesPerformance = percentage < 60;
+    return matchesSearch && matchesPerformance;
+  });
 
   const handleGenerateQuiz = async () => {
     if (!selectedFile) return;
@@ -135,8 +211,24 @@ export default function TeacherDashboard() {
       if (!response.ok) throw new Error('Failed to generate questions.');
       const aiQuestions = await response.json();
       setDraftQuestions([...draftQuestions, ...aiQuestions]);
+      setSaveMessage('✅ Questions generated! Review and publish below.');
     } catch (error) { setAiError(error.message); } 
     finally { setIsGenerating(false); }
+  };
+
+  // Handle drag and drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      setSelectedFile(files[0]);
+    }
   };
 
   const handleAddManualQuestion = () => {
@@ -225,39 +317,193 @@ export default function TeacherDashboard() {
       </nav>
 
       <div className="max-w-6xl mx-auto p-8 w-full flex-1 z-10 relative">
-        <div className={`flex space-x-6 mb-8 border-b pb-px overflow-x-auto ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <button onClick={() => {setActiveTab('manage-quizzes'); setEditingQuiz(null);}} className={`pb-4 font-bold text-lg px-2 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'manage-quizzes' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>Manage Quizzes</button>
-          <button onClick={() => setActiveTab('quiz-builder')} className={`pb-4 font-bold text-lg px-2 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'quiz-builder' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>Quiz Builder</button>
-          <button onClick={() => setActiveTab('student-scores')} className={`pb-4 font-bold text-lg px-2 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'student-scores' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>Student Results</button>
-          <button onClick={() => setActiveTab('student-requests')} className={`pb-4 font-bold text-lg px-2 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'student-requests' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>Class Roster</button>
+        <div className={`flex space-x-2 mb-8 border-b pb-px overflow-x-auto ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+          <button onClick={() => {setActiveTab('dashboard'); setEditingQuiz(null);}} className={`pb-4 font-bold text-lg px-4 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>📊 Dashboard</button>
+          <button onClick={() => {setActiveTab('manage-quizzes'); setEditingQuiz(null);}} className={`pb-4 font-bold text-lg px-4 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'manage-quizzes' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>📚 Manage Quizzes</button>
+          <button onClick={() => setActiveTab('quiz-builder')} className={`pb-4 font-bold text-lg px-4 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'quiz-builder' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>🪄 Quiz Builder</button>
+          <button onClick={() => setActiveTab('student-scores')} className={`pb-4 font-bold text-lg px-4 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'student-scores' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>📈 Student Results</button>
+          <button onClick={() => setActiveTab('student-requests')} className={`pb-4 font-bold text-lg px-4 border-b-4 transition-colors whitespace-nowrap ${activeTab === 'student-requests' ? (isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700') : (isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800')}`}>👨‍🎓 Class Roster</button>
         </div>
+
+        {/* --- DASHBOARD TAB --- */}
+        {activeTab === 'dashboard' && (
+          <div className="animate-in fade-in duration-300 space-y-8">
+            {/* Welcome Hero Section */}
+            <div className={`relative p-12 rounded-3xl border overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-teal-600/20 to-cyan-600/10 border-teal-500/20' : 'bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200'}`}>
+              <div className="absolute inset-0 pointer-events-none">
+                <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl ${isDarkMode ? 'bg-teal-500/10' : 'bg-teal-300/30'}`}></div>
+              </div>
+              <div className="relative z-10">
+                <h1 className={`text-4xl font-black mb-2 ${textPrimary}`}>Welcome back, {username}! 👋</h1>
+                <p className={`text-lg font-medium ${textSecondary}`}>Manage your classes, create quizzes, and track student performance.</p>
+              </div>
+            </div>
+
+            {/* Analytics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className={`p-6 rounded-2xl border backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:shadow-lg ${cardBg} group cursor-pointer`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`text-3xl font-bold ${textPrimary}`}>{analytics.totalQuizzes}</div>
+                  <div className="text-2xl opacity-60 group-hover:scale-110 transition">📚</div>
+                </div>
+                <p className={`text-sm font-bold ${textSecondary}`}>Total Quizzes</p>
+                <div className={`mt-3 h-1 rounded-full ${isDarkMode ? 'bg-teal-500/30' : 'bg-teal-200'}`}></div>
+              </div>
+
+              <div className={`p-6 rounded-2xl border backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:shadow-lg ${cardBg} group cursor-pointer`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`text-3xl font-bold ${textPrimary}`}>{analytics.totalStudents}</div>
+                  <div className="text-2xl opacity-60 group-hover:scale-110 transition">👨‍🎓</div>
+                </div>
+                <p className={`text-sm font-bold ${textSecondary}`}>Total Students</p>
+                <div className={`mt-3 h-1 rounded-full ${isDarkMode ? 'bg-cyan-500/30' : 'bg-cyan-200'}`}></div>
+              </div>
+
+              <div className={`p-6 rounded-2xl border backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:shadow-lg ${cardBg} group cursor-pointer`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`text-3xl font-bold ${textPrimary}`}>{analytics.totalAttempts}</div>
+                  <div className="text-2xl opacity-60 group-hover:scale-110 transition">📝</div>
+                </div>
+                <p className={`text-sm font-bold ${textSecondary}`}>Quiz Attempts</p>
+                <div className={`mt-3 h-1 rounded-full ${isDarkMode ? 'bg-emerald-500/30' : 'bg-emerald-200'}`}></div>
+              </div>
+
+              <div className={`p-6 rounded-2xl border backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:shadow-lg ${cardBg} group cursor-pointer`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`text-3xl font-bold ${textPrimary}`}>{analytics.averageScore}%</div>
+                  <div className="text-2xl opacity-60 group-hover:scale-110 transition">⭐</div>
+                </div>
+                <p className={`text-sm font-bold ${textSecondary}`}>Average Score</p>
+                <div className={`mt-3 h-1 rounded-full bg-gradient-to-r ${isDarkMode ? 'from-amber-500/30 to-orange-500/30' : 'from-amber-300 to-orange-300'}`}></div>
+              </div>
+
+              <div className={`p-6 rounded-2xl border backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:shadow-lg ${cardBg} group cursor-pointer`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`text-3xl font-bold ${analytics.pendingRequests > 0 ? 'text-red-500' : textPrimary}`}>{analytics.pendingRequests}</div>
+                  <div className={`text-2xl opacity-60 group-hover:scale-110 transition ${analytics.pendingRequests > 0 ? 'animate-pulse' : ''}`}>🔔</div>
+                </div>
+                <p className={`text-sm font-bold ${textSecondary}`}>Pending Requests</p>
+                <div className={`mt-3 h-1 rounded-full ${isDarkMode ? 'bg-red-500/30' : 'bg-red-200'}`}></div>
+              </div>
+            </div>
+
+            {/* Leaderboard & Activity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Leaderboard */}
+              <div className={`p-6 rounded-2xl border ${cardBg}`}>
+                <h3 className={`text-xl font-black mb-6 flex items-center gap-2 ${textPrimary}`}>🏆 Top Students</h3>
+                <div className="space-y-3">
+                  {topStudents.length > 0 ? topStudents.map((student, idx) => (
+                    <div key={student.id} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${isDarkMode ? 'bg-white/5 border-white/10 hover:border-teal-500/30' : 'bg-slate-50 border-slate-200 hover:border-teal-400'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`text-2xl font-black w-10 text-center ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-slate-400' : 'text-orange-600'}`}>
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-bold ${textPrimary}`}>{student.name}</p>
+                          <div className={`text-xs font-medium ${textSecondary}`}>{student.attempts} attempt{student.attempts > 1 ? 's' : ''}</div>
+                        </div>
+                        <div className={`text-2xl font-black bg-gradient-to-r ${idx === 0 ? 'from-yellow-500 to-amber-400' : idx === 1 ? 'from-slate-400 to-slate-300' : 'from-orange-500 to-orange-400'} bg-clip-text text-transparent`}>{student.average}%</div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className={`text-center py-6 ${textSecondary}`}>No student data yet</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className={`p-6 rounded-2xl border ${cardBg}`}>
+                <h3 className={`text-xl font-black mb-6 flex items-center gap-2 ${textPrimary}`}>⚡ Quick Actions</h3>
+                <div className="space-y-3">
+                  <button onClick={() => setActiveTab('quiz-builder')} className={`w-full p-4 rounded-xl border font-bold transition-all duration-300 hover:scale-105 text-left flex items-center gap-3 ${isDarkMode ? 'bg-teal-500/10 border-teal-500/30 text-teal-300 hover:bg-teal-500/20' : 'bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100'}`}>
+                    <span className="text-2xl">➕</span>
+                    <span>Create New Quiz</span>
+                  </button>
+                  <button onClick={() => setActiveTab('student-requests')} className={`w-full p-4 rounded-xl border font-bold transition-all duration-300 hover:scale-105 text-left flex items-center gap-3 ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20' : 'bg-cyan-50 border-cyan-300 text-cyan-700 hover:bg-cyan-100'}`}>
+                    <span className="text-2xl">👨‍🎓</span>
+                    <span>View Requests ({analytics.pendingRequests})</span>
+                  </button>
+                  <button onClick={() => setActiveTab('student-scores')} className={`w-full p-4 rounded-xl border font-bold transition-all duration-300 hover:scale-105 text-left flex items-center gap-3 ${isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20' : 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'}`}>
+                    <span className="text-2xl">📊</span>
+                    <span>View Student Results</span>
+                  </button>
+                  <button onClick={() => setIsProfileModalOpen(true)} className={`w-full p-4 rounded-xl border font-bold transition-all duration-300 hover:scale-105 text-left flex items-center gap-3 ${isDarkMode ? 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-500/20' : 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100'}`}>
+                    <span className="text-2xl">⚙️</span>
+                    <span>Profile Settings</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* --- MANAGE QUIZZES --- */}
         {activeTab === 'manage-quizzes' && (
           <div className="animate-in fade-in duration-300">
             {!editingQuiz ? (
               <>
-                <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>My Saved Quizzes</h2>
-                <p className={`font-medium mb-8 ${textSecondary}`}>Edit your AI-generated questions or remove outdated materials.</p>
-                {myQuizzes.length === 0 ? (
-                  <div className={`p-12 rounded-2xl border-dashed border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}><p className={`font-bold ${textSecondary}`}>You haven't published any quizzes yet.</p></div>
+                <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>📚 My Saved Quizzes</h2>
+                <p className={`font-medium mb-6 ${textSecondary}`}>Edit your AI-generated questions or remove outdated materials.</p>
+                
+                {/* Search and Filter */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <input 
+                    type="text" 
+                    placeholder="🔍 Search by title..." 
+                    value={searchQuery} 
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`p-3 border rounded-xl font-medium focus:outline-none transition ${inputBg}`}
+                  />
+                  <select 
+                    value={filterGrade} 
+                    onChange={(e) => setFilterGrade(e.target.value)}
+                    className={`p-3 border rounded-xl font-medium focus:outline-none transition ${inputBg}`}
+                  >
+                    <option value="All">All Grades</option>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
+                  </select>
+                  <div className={`p-3 rounded-xl font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {filteredQuizzes.length} of {myQuizzes.length} quizzes
+                  </div>
+                </div>
+                
+                {filteredQuizzes.length === 0 ? (
+                  <div className={`p-12 rounded-2xl border-dashed border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}>
+                    <p className="text-3xl mb-2">📚</p>
+                    <p className={`font-bold ${textSecondary}`}>No quizzes found</p>
+                    <p className={`text-sm ${textSecondary}`}>Create your first quiz to get started</p>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {myQuizzes.map(quiz => (
-                      <div key={quiz._id} className={`p-6 rounded-2xl border transition flex flex-col justify-between ${cardBg} ${isDarkMode ? 'hover:border-teal-500/50' : 'hover:border-teal-400'}`}>
-                        <div className="mb-6">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className={`text-xl font-bold ${textPrimary}`}>{quiz.title}</h3>
-                            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>{quiz.grade}</span>
+                    {filteredQuizzes.map(quiz => {
+                      const quizAttempts = studentScores.filter(s => s.quizId?._id === quiz._id).length;
+                      const quizAverage = studentScores.filter(s => s.quizId?._id === quiz._id).length > 0
+                        ? (studentScores.filter(s => s.quizId?._id === quiz._id).reduce((sum, s) => sum + (s.score / s.totalQuestions) * 100, 0) / studentScores.filter(s => s.quizId?._id === quiz._id).length).toFixed(1)
+                        : 'N/A';
+                      
+                      return (
+                        <div key={quiz._id} className={`p-6 rounded-2xl border transition-all duration-300 hover:-translate-y-2 hover:shadow-lg flex flex-col justify-between group ${cardBg} ${isDarkMode ? 'hover:border-teal-500/50' : 'hover:border-teal-400'}`}>
+                          <div className="mb-6">
+                            <div className="flex justify-between items-start mb-3">
+                              <h3 className={`text-xl font-bold ${textPrimary} group-hover:text-teal-400 transition`}>{quiz.title}</h3>
+                              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>🎓 {quiz.grade}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                              <div className={`text-xs font-medium ${textSecondary}`}>📝 {quiz.questions?.length || 0} Questions</div>
+                              <div className={`text-xs font-medium ${textSecondary}`}>⏱️ {quiz.timeLimit > 0 ? `${quiz.timeLimit}m` : '∞'}</div>
+                              <div className={`text-xs font-medium ${textSecondary}`}>📊 {quizAttempts} Attempt{quizAttempts !== 1 ? 's' : ''}</div>
+                              <div className={`text-xs font-bold ${quizAverage !== 'N/A' ? 'text-emerald-500' : textSecondary}`}>⭐ {quizAverage}%</div>
+                            </div>
+                            <div className={`text-xs ${textSecondary}`}>Created: {new Date(quiz.createdAt || Date.now()).toLocaleDateString()}</div>
                           </div>
-                          <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{quiz.questions?.length || 0} Questions • {quiz.timeLimit > 0 ? `${quiz.timeLimit} Min Limit` : 'No Time Limit'}</p>
+                          <div className="flex gap-3">
+                            <button onClick={() => setEditingQuiz(quiz)} className={`flex-1 font-bold py-2 rounded-xl transition border ${isDarkMode ? 'bg-white/5 text-teal-300 border-transparent hover:bg-teal-500/20 hover:border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'}`}>✏️ Edit</button>
+                            <button onClick={() => handleDeleteQuiz(quiz._id)} className={`flex-1 font-bold py-2 rounded-xl border transition ${isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>🗑️ Delete</button>
+                          </div>
                         </div>
-                        <div className="flex gap-3">
-                          <button onClick={() => setEditingQuiz(quiz)} className={`flex-1 font-bold py-2 rounded-xl transition border ${isDarkMode ? 'bg-white/5 text-teal-300 border-transparent hover:bg-teal-500/20 hover:border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'}`}>✏️ Edit</button>
-                          <button onClick={() => handleDeleteQuiz(quiz._id)} className={`flex-1 font-bold py-2 rounded-xl border transition ${isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>🗑️ Delete</button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </>
@@ -313,8 +559,29 @@ export default function TeacherDashboard() {
         {/* --- HYBRID QUIZ BUILDER --- */}
         {activeTab === 'quiz-builder' && (
           <div className="animate-in fade-in duration-300 space-y-8">
+            {/* Progress Indicator */}
+            <div className={`p-6 rounded-2xl border ${cardBg}`}>
+              <h3 className={`text-sm font-black uppercase tracking-wider mb-4 ${textSecondary}`}>Quiz Builder Progress</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${isDarkMode ? 'bg-teal-500' : 'bg-teal-600'}`}>✓</div>
+                  <span className={`text-xs font-bold ${isDarkMode ? 'text-teal-400' : 'text-teal-700'}`}>Quiz Info</span>
+                </div>
+                <div className={`flex-1 h-1 mx-2 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`}></div>
+                <div className={`flex-1 flex items-center gap-2`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${draftQuestions.length > 0 ? (isDarkMode ? 'bg-teal-500' : 'bg-teal-600') : (isDarkMode ? 'bg-slate-700' : 'bg-slate-300')}`}>2</div>
+                  <span className={`text-xs font-bold ${draftQuestions.length > 0 ? (isDarkMode ? 'text-teal-400' : 'text-teal-700') : textSecondary}`}>Generate Questions</span>
+                </div>
+                <div className={`flex-1 h-1 mx-2 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`}></div>
+                <div className={`flex-1 flex items-center gap-2`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${quizTitle && draftQuestions.length > 0 ? (isDarkMode ? 'bg-teal-500' : 'bg-teal-600') : (isDarkMode ? 'bg-slate-700' : 'bg-slate-300')}`}>3</div>
+                  <span className={`text-xs font-bold ${quizTitle && draftQuestions.length > 0 ? (isDarkMode ? 'text-teal-400' : 'text-teal-700') : textSecondary}`}>Publish</span>
+                </div>
+              </div>
+            </div>
+
             <div className={`p-8 rounded-2xl border ${cardBg}`}>
-              <h2 className={`text-2xl font-black mb-6 ${textPrimary}`}>Create a New Quiz</h2>
+              <h2 className={`text-2xl font-black mb-6 ${textPrimary}`}>🪄 Create a New Quiz</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div>
                   <label className={`block text-xs font-bold uppercase mb-2 ${textSecondary}`}>Quiz Title</label>
@@ -329,24 +596,60 @@ export default function TeacherDashboard() {
                 <div>
                   <label className={`block text-xs font-bold uppercase mb-2 ${textSecondary}`}>Time Limit (Minutes)</label>
                   <input type="number" min="0" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(Number(e.target.value))} className={`w-full p-4 border rounded-xl font-bold focus:outline-none transition ${inputBg}`} />
-                  <p className={`text-xs mt-1 ${textSecondary}`}>Set to 0 for no time limit.</p>
+                  <p className={`text-xs mt-1 ${textSecondary}`}>Set to 0 for no limit</p>
                 </div>
               </div>
 
-              <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-teal-500/10 border-teal-500/30' : 'bg-teal-50 border-teal-200'}`}>
-                <h3 className={`font-bold mb-4 ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>🪄 AI Question Generator</h3>
-                <div className="flex items-center gap-4 flex-wrap">
-                  <input type="file" accept="application/pdf" onChange={(e) => setSelectedFile(e.target.files[0])} className={`block text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-bold cursor-pointer transition ${isDarkMode ? 'text-slate-400 file:bg-white/10 file:text-teal-300 hover:file:bg-white/20' : 'text-slate-600 file:bg-white file:text-teal-700 hover:file:bg-slate-100 shadow-sm'}`} />
+              {/* Drag & Drop PDF Upload */}
+              <div 
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className={`p-8 rounded-2xl border-2 border-dashed text-center transition-all cursor-pointer mb-8 ${
+                  selectedFile
+                    ? isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-50 border-emerald-300'
+                    : isDarkMode ? 'bg-teal-500/10 border-teal-500/30 hover:border-teal-500' : 'bg-teal-50 border-teal-300 hover:border-teal-500'
+                }`}
+              >
+                <input 
+                  type="file" 
+                  id="pdf-upload"
+                  accept="application/pdf" 
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  className="hidden"
+                />
+                <label htmlFor="pdf-upload" className="cursor-pointer">
+                  <div className={`text-4xl mb-2 ${selectedFile ? '✅' : '📄'}`}></div>
+                  <p className={`font-bold text-lg ${selectedFile ? (isDarkMode ? 'text-emerald-300' : 'text-emerald-700') : (isDarkMode ? 'text-teal-300' : 'text-teal-700')}`}>
+                    {selectedFile ? selectedFile.name : 'Drop PDF Here'}
+                  </p>
+                  <p className={`text-sm ${textSecondary}`}>
+                    {selectedFile ? 'Click to change' : 'or click to browse'}
+                  </p>
+                </label>
+              </div>
+
+              {/* AI Generate Section */}
+              <div className={`p-6 rounded-2xl border flex items-center justify-between ${isDarkMode ? 'bg-teal-500/10 border-teal-500/30' : 'bg-teal-50 border-teal-200'}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✨</span>
+                  <div>
+                    <p className={`font-bold ${isDarkMode ? 'text-teal-300' : 'text-teal-700'}`}>AI Question Generator</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-teal-300/60' : 'text-teal-600/60'}`}>Automatically create questions from your PDF</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <label className={`text-sm font-bold ${isDarkMode ? 'text-teal-400' : 'text-teal-700'}`}>Questions:</label>
-                    <input type="number" min="1" max="20" value={numQuestions} onChange={(e) => setNumQuestions(e.target.value)} className={`w-20 p-2 rounded-lg border text-center font-bold focus:outline-none ${isDarkMode ? 'bg-slate-900/50 border-teal-500/30 text-white' : 'bg-white border-teal-300 text-slate-800 shadow-sm'}`} />
+                    <input type="number" min="1" max="20" value={numQuestions} onChange={(e) => setNumQuestions(e.target.value)} className={`w-16 p-2 rounded-lg border text-center font-bold focus:outline-none ${isDarkMode ? 'bg-slate-900/50 border-teal-500/30 text-white' : 'bg-white border-teal-300 text-slate-800'}`} />
                   </div>
                   <button onClick={handleGenerateQuiz} disabled={!selectedFile || isGenerating} className={`border font-bold py-2 px-6 rounded-xl transition shadow-sm disabled:opacity-50 ${isDarkMode ? 'bg-teal-500/20 border-teal-500/30 text-teal-300 hover:bg-teal-500 hover:text-white' : 'bg-teal-100 border-teal-300 text-teal-800 hover:bg-teal-500 hover:text-white hover:border-teal-500'}`}>
-                    {isGenerating ? 'Thinking...' : 'Generate with AI'}
+                    {isGenerating ? '⏳ Generating...' : '🚀 Generate'}
                   </button>
                 </div>
-                {aiError && <p className={`font-bold mt-4 border p-3 rounded-lg ${isDarkMode ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-red-600 bg-red-50 border-red-200'}`}>{aiError}</p>}
               </div>
+              
+              {aiError && <p className={`font-bold mt-4 border p-3 rounded-lg ${isDarkMode ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-red-600 bg-red-50 border-red-200'}`}>❌ {aiError}</p>}
+              {saveMessage && <p className={`font-bold mt-4 border p-3 rounded-lg ${isDarkMode ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}>{saveMessage}</p>}
             </div>
 
             <div className="space-y-6">
@@ -384,37 +687,97 @@ export default function TeacherDashboard() {
         {/* --- STUDENT SCORES --- */}
         {activeTab === 'student-scores' && (
           <div className="animate-in fade-in duration-300">
-             <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>Student Performance</h2>
-             <p className={`font-medium mb-8 ${textSecondary}`}>Track your students' grades across all your active quizzes.</p>
-             {studentScores.length === 0 ? (
-               <div className={`p-12 rounded-2xl border-dashed border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}><p className={`font-bold ${textSecondary}`}>No students have completed your quizzes yet.</p></div>
+             <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>📈 Student Performance</h2>
+             <p className={`font-medium mb-6 ${textSecondary}`}>Track your students' grades across all your active quizzes.</p>
+             
+             {/* Search and Filter */}
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+               <input 
+                 type="text" 
+                 placeholder="🔍 Search by student name..." 
+                 value={studentSearchQuery} 
+                 onChange={(e) => setStudentSearchQuery(e.target.value)}
+                 className={`p-3 border rounded-xl font-medium focus:outline-none transition ${inputBg}`}
+               />
+               <select 
+                 value={studentFilterPerformance} 
+                 onChange={(e) => setStudentFilterPerformance(e.target.value)}
+                 className={`p-3 border rounded-xl font-medium focus:outline-none transition ${inputBg}`}
+               >
+                 <option value="All">All Performance Levels</option>
+                 <option value="Excellent">Excellent (80%+)</option>
+                 <option value="Good">Good (60-79%)</option>
+                 <option value="Needs Improvement">Needs Improvement (&lt;60%)</option>
+               </select>
+               <div className={`p-3 rounded-xl font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                 {filteredStudentScores.length} of {studentScores.length} results
+               </div>
+             </div>
+             
+             {filteredStudentScores.length === 0 ? (
+               <div className={`p-12 rounded-2xl border-dashed border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}>
+                 <p className="text-3xl mb-2">📊</p>
+                 <p className={`font-bold ${textSecondary}`}>No results found</p>
+                 <p className={`text-sm ${textSecondary}`}>Try adjusting your search or filters</p>
+               </div>
              ) : (
-               <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
-                 <table className="w-full text-left border-collapse">
-                   <thead>
-                     <tr className={`uppercase text-xs font-black tracking-wider border-b ${isDarkMode ? 'bg-slate-900/50 text-teal-400 border-white/10' : 'bg-slate-100 text-teal-700 border-slate-200'}`}>
-                       <th className="p-4">Student</th>
-                       <th className="p-4">Quiz Title</th>
-                       <th className="p-4">Grade Level</th>
-                       <th className="p-4">Final Score</th>
-                       <th className="p-4">Date Taken</th>
-                     </tr>
-                   </thead>
-                   <tbody className={`divide-y ${isDarkMode ? 'divide-white/10' : 'divide-slate-200'}`}>
-                     {studentScores.map((scoreObj) => {
-                       const percentage = (scoreObj.score / scoreObj.totalQuestions) * 100;
-                       return (
-                         <tr key={scoreObj._id} className={`transition ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
-                           <td className="p-4"><p className={`font-bold ${textPrimary}`}>{scoreObj.studentId?.fullName || scoreObj.studentId?.username}</p><p className={`text-xs ${textSecondary}`}>{scoreObj.studentId?.schoolName}</p></td>
-                           <td className={`p-4 font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{scoreObj.quizId?.title}</td>
-                           <td className="p-4 font-medium"><span className={`border px-2 py-1 rounded-md text-xs font-bold ${isDarkMode ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>{scoreObj.quizId?.grade}</span></td>
-                           <td className="p-4"><span className={`font-black px-3 py-1 rounded-full text-sm border ${percentage >= 75 ? (isDarkMode ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border-emerald-300') : percentage >= 50 ? (isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-100 text-amber-800 border-amber-300') : (isDarkMode ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-red-100 text-red-800 border-red-300')}`}>{scoreObj.score} / {scoreObj.totalQuestions}</span></td>
-                           <td className={`p-4 text-sm font-medium ${textSecondary}`}>{new Date(scoreObj.submittedAt).toLocaleDateString()}</td>
-                         </tr>
-                       );
-                     })}
-                   </tbody>
-                 </table>
+               <div className="space-y-4">
+                 {filteredStudentScores.map((scoreObj) => {
+                   const percentage = (scoreObj.score / scoreObj.totalQuestions) * 100;
+                   let perfColor = 'emerald';
+                   if (percentage < 60) perfColor = 'red';
+                   else if (percentage < 80) perfColor = 'amber';
+                   
+                   return (
+                     <div key={scoreObj._id} className={`p-4 rounded-2xl border transition-all duration-300 hover:scale-105 ${cardBg} ${isDarkMode ? 'hover:border-teal-500/50' : 'hover:border-teal-400'}`}>
+                       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                         {/* Student Info */}
+                         <div className="flex items-center gap-3">
+                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${isDarkMode ? 'bg-teal-500/30' : 'bg-teal-200'}`}>
+                             {(scoreObj.studentId?.fullName || scoreObj.studentId?.username)?.[0].toUpperCase()}
+                           </div>
+                           <div>
+                             <p className={`font-bold text-sm ${textPrimary}`}>{scoreObj.studentId?.fullName || scoreObj.studentId?.username}</p>
+                             <p className={`text-xs ${textSecondary}`}>{scoreObj.studentId?.schoolName || 'No school'}</p>
+                           </div>
+                         </div>
+                         
+                         {/* Quiz Info */}
+                         <div>
+                           <p className={`font-bold text-sm ${textPrimary}`}>{scoreObj.quizId?.title}</p>
+                           <p className={`text-xs ${textSecondary}`}>{scoreObj.quizId?.grade}</p>
+                         </div>
+                         
+                         {/* Progress Bar */}
+                         <div className="md:col-span-2">
+                           <div className="flex items-center gap-2">
+                             <div className={`flex-1 h-3 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                               <div 
+                                 className={`h-full bg-gradient-to-r ${
+                                   perfColor === 'emerald' ? 'from-emerald-500 to-teal-500' : 
+                                   perfColor === 'amber' ? 'from-amber-500 to-orange-500' : 
+                                   'from-red-500 to-pink-500'
+                                }`}
+                                 style={{ width: `${percentage}%` }}
+                               ></div>
+                             </div>
+                             <span className={`font-black text-sm min-w-12 text-right ${
+                               perfColor === 'emerald' ? 'text-emerald-500' : 
+                               perfColor === 'amber' ? 'text-amber-500' : 
+                               'text-red-500'
+                             }`}>{percentage.toFixed(0)}%</span>
+                           </div>
+                         </div>
+                         
+                         {/* Score & Date */}
+                         <div className="text-right">
+                           <p className={`font-bold text-sm ${textPrimary}`}>{scoreObj.score}/{scoreObj.totalQuestions}</p>
+                           <p className={`text-xs ${textSecondary}`}>{new Date(scoreObj.submittedAt).toLocaleDateString()}</p>
+                         </div>
+                       </div>
+                     </div>
+                   );
+                 })}
                </div>
              )}
           </div>
@@ -423,18 +786,48 @@ export default function TeacherDashboard() {
         {/* --- CLASS ROSTER --- */}
         {activeTab === 'student-requests' && (
           <div className="animate-in fade-in duration-300">
-            <h2 className={`text-2xl font-bold mb-6 ${textPrimary}`}>Manage Class Roster</h2>
+            <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>👨‍🎓 Manage Class Roster</h2>
+            <p className={`font-medium mb-6 ${textSecondary}`}>Review and approve student enrollment requests</p>
             {enrollmentRequests.length === 0 ? (
-               <div className={`p-12 rounded-2xl border-dashed border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}><p className={`font-bold ${textSecondary}`}>No students have requested to join your classes yet.</p></div>
+               <div className={`p-12 rounded-2xl border-dashed border-2 text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}>
+                 <p className="text-3xl mb-2">👨‍🎓</p>
+                 <p className={`font-bold ${textSecondary}`}>No enrollment requests</p>
+                 <p className={`text-sm ${textSecondary}`}>Students will appear here when they request to join</p>
+               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {enrollmentRequests.map(req => (
-                  <div key={req._id} className={`p-6 rounded-2xl border flex flex-col justify-between ${cardBg}`}>
+                  <div key={req._id} className={`p-6 rounded-2xl border transition-all duration-300 hover:-translate-y-2 hover:shadow-lg flex flex-col justify-between ${cardBg} ${req.status === 'pending' ? (isDarkMode ? 'border-amber-500/30' : 'border-amber-300') : (isDarkMode ? 'border-emerald-500/30' : 'border-emerald-300')}`}>
                     <div className="mb-4">
-                      <div className="flex justify-between items-start mb-2"><h3 className={`text-xl font-bold ${textPrimary}`}>{req.studentId?.fullName || req.studentId?.username}</h3><span className={`text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>{req.grade}</span></div>
-                      <p className={`text-sm font-medium ${textSecondary}`}>🏫 {req.studentId?.schoolName || 'No school provided'}</p><p className={`text-sm font-medium mt-1 ${textSecondary}`}>📞 Parent: {req.studentId?.parentContact || 'No contact provided'}</p>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-lg ${isDarkMode ? 'bg-teal-500/30' : 'bg-teal-200'}`}>
+                            {(req.studentId?.fullName || req.studentId?.username)?.[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className={`font-bold ${textPrimary}`}>{req.studentId?.fullName || req.studentId?.username}</h3>
+                            <span className={`inline-block text-xs font-bold px-2 py-1 rounded-full border mt-1 ${req.status === 'pending' ? (isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200') : (isDarkMode ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}`}>{req.status === 'pending' ? '⏳ Pending' : '✅ Approved'}</span>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>{req.grade}</span>
+                      </div>
+                      <div className="space-y-2">
+                        <p className={`text-sm font-medium ${textSecondary}`}>🏫 {req.studentId?.schoolName || 'No school provided'}</p>
+                        <p className={`text-sm font-medium ${textSecondary}`}>📞 Parent: {req.studentId?.parentContact || 'No contact provided'}</p>
+                      </div>
                     </div>
-                    {req.status === 'pending' ? <button onClick={() => handleApprove(req._id)} className={`w-full border font-bold py-3 rounded-xl transition shadow-sm ${isDarkMode ? 'bg-teal-500/20 border-teal-500/30 text-teal-300 hover:bg-teal-500 hover:text-white' : 'bg-teal-100 border-teal-300 text-teal-800 hover:bg-teal-500 hover:text-white'}`}>Approve Student</button> : <div className={`w-full border text-center font-bold py-3 rounded-xl ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>✅ Approved & Enrolled</div>}
+                    {req.status === 'pending' ? (
+                      <button 
+                        onClick={() => handleApprove(req._id)} 
+                        className={`w-full border font-bold py-3 rounded-xl transition-all duration-300 hover:scale-105 shadow-sm ${isDarkMode ? 'bg-teal-500/20 border-teal-500/30 text-teal-300 hover:bg-teal-500 hover:text-white' : 'bg-teal-100 border-teal-300 text-teal-800 hover:bg-teal-500 hover:text-white'}`}
+                      >
+                        ✓ Approve Student
+                      </button>
+                    ) : (
+                      <div className={`w-full border text-center font-bold py-3 rounded-xl ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        ✅ Approved & Enrolled
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
