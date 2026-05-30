@@ -145,14 +145,6 @@ export default function Login() {
 
       <div className={`backdrop-blur-2xl p-10 rounded-3xl w-full max-w-2xl border z-10 relative transition-all duration-500 ${cardBg}`}>
         
-        <div className="flex items-center justify-center mb-6 gap-3 group">
-          <img 
-            src="/assets/logo.png" 
-            alt="SmartQuiz Logo" 
-            className="h-20 object-contain transition-transform duration-300 group-hover:scale-105" 
-            loading="lazy"
-          />
-        </div>
         <h1 className={`text-4xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r mb-2 ${titleGradient}`}>SmartQuiz</h1>
         <p className={`text-center mb-8 font-medium ${textSecondary}`}>
           {isLogin ? 'Welcome back! Please log in.' : 'Complete your profile to get started.'}
