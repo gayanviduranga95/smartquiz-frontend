@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
+import Cropper from 'react-easy-crop';
 
 export default function TeacherDashboard() {
   const location = useLocation();
@@ -55,6 +56,13 @@ export default function TeacherDashboard() {
   const [profileMessage, setProfileMessage] = useState('');
   const [profilePicFile, setProfilePicFile] = useState(null);
   const [profilePicPreview, setProfilePicPreview] = useState('');
+
+  // Image Crop State
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropImage, setCropImage] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   useEffect(() => {
     if (!userId) { navigate('/'); return; }
@@ -158,12 +166,54 @@ export default function TeacherDashboard() {
   const handleProfilePicChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setProfilePicFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
-        setProfilePicPreview(e.target?.result);
+        setCropImage(e.target?.result);
+        setIsCropModalOpen(true);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropConfirm = async () => {
+    if (!cropImage || !croppedAreaPixels) return;
+    
+    try {
+      const image = new Image();
+      image.src = cropImage;
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = croppedAreaPixels.width;
+        canvas.height = croppedAreaPixels.height;
+        
+        ctx.drawImage(
+          image,
+          croppedAreaPixels.x,
+          croppedAreaPixels.y,
+          croppedAreaPixels.width,
+          croppedAreaPixels.height,
+          0,
+          0,
+          croppedAreaPixels.width,
+          croppedAreaPixels.height
+        );
+        
+        canvas.toBlob((blob) => {
+          const croppedFile = new File([blob], 'profile-pic.jpg', { type: 'image/jpeg' });
+          setProfilePicFile(croppedFile);
+          setProfilePicPreview(canvas.toDataURL('image/jpeg'));
+          setIsCropModalOpen(false);
+          setCropImage(null);
+        }, 'image/jpeg', 0.9);
+      };
+    } catch (error) {
+      console.error('Crop error:', error);
     }
   };
 
@@ -790,6 +840,62 @@ export default function TeacherDashboard() {
 
         </div>
       </div>
+
+      {/* CROP MODAL */}
+      {isCropModalOpen && (
+        <div className={`fixed inset-0 backdrop-blur-lg flex items-center justify-center p-4 z-50 transition-colors ${isDarkMode ? 'bg-slate-950/80' : 'bg-slate-800/40'}`}>
+          <div className={`p-8 rounded-2xl shadow-2xl max-w-md w-full border animate-in zoom-in-95 duration-200 ${isDarkMode ? 'bg-slate-900/90 border-teal-500/30' : 'bg-white border-teal-300'}`}>
+            <h3 className={`text-xl font-bold mb-4 ${textPrimary}`}>Crop Your Photo</h3>
+            
+            <div className="relative w-full h-80 bg-slate-900 rounded-lg mb-4 overflow-hidden">
+              {cropImage && (
+                <Cropper
+                  image={cropImage}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  cropShape="round"
+                  showGrid={false}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                />
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className={`text-xs font-bold block mb-2 ${textSecondary}`}>Zoom</label>
+              <input 
+                type="range" 
+                min="1" 
+                max="3" 
+                step="0.1" 
+                value={zoom} 
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsCropModalOpen(false);
+                  setCropImage(null);
+                }}
+                className={`flex-1 py-2 rounded-lg font-bold transition ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCropConfirm}
+                className="flex-1 py-2 rounded-lg font-bold text-white bg-gradient-to-r from-teal-500 to-cyan-500 hover:opacity-90 transition"
+              >
+                ✓ Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PROFILE MODAL */}
       {isProfileModalOpen && (
