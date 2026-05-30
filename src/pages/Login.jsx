@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropImage';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -32,6 +34,47 @@ export default function Login() {
   // System State
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Image Crop State
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [showCropper, setShowCropper] = useState(false);
+
+  const onFileChange = async (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageToCrop(reader.result);
+        setShowCropper(true);
+      });
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropSave = async () => {
+    try {
+      const croppedImageBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      // Convert blob to file for FormData
+      const file = new File([croppedImageBlob], "profile-pic.jpg", { type: "image/jpeg" });
+      setProfilePic(file);
+      setShowCropper(false);
+    } catch (e) {
+      console.error(e);
+      setMessage('❌ Failed to crop image');
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setImageToCrop(null);
+  };
 
   const districts = [
     "Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo", "Galle", 
@@ -199,7 +242,14 @@ export default function Login() {
                   <input type="text" placeholder="Qualifications (e.g. BSc Engineering)" value={qualifications} onChange={(e) => setQualifications(e.target.value)} className={`w-full p-4 border rounded-xl font-medium focus:outline-none transition ${inputBg}`} required={role === 'teacher' && !isLogin} />
                   <div className={`md:col-span-2 p-4 border-2 border-dashed rounded-xl ${isDarkMode ? 'border-teal-500/30 bg-teal-500/5' : 'border-teal-300 bg-teal-50'}`}>
                     <label className={`block text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-teal-400' : 'text-teal-700'}`}>Upload Profile Picture (Optional)</label>
-                    <input type="file" accept="image/*" onChange={(e) => setProfilePic(e.target.files[0])} className={`block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-bold cursor-pointer transition ${isDarkMode ? 'text-slate-400 file:bg-teal-500/20 file:text-teal-300 hover:file:bg-teal-500/30' : 'text-slate-600 file:bg-teal-100 file:text-teal-700 hover:file:bg-teal-200'}`} />
+                    <div className="flex items-center gap-4">
+                      {profilePic && (
+                        <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal-500">
+                          <img src={URL.createObjectURL(profilePic)} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" onChange={onFileChange} className={`block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-bold cursor-pointer transition ${isDarkMode ? 'text-slate-400 file:bg-teal-500/20 file:text-teal-300 hover:file:bg-teal-500/30' : 'text-slate-600 file:bg-teal-100 file:text-teal-700 hover:file:bg-teal-200'}`} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -236,6 +286,65 @@ export default function Login() {
         </p>
 
       </div>
+
+      {/* --- IMAGE CROPPER MODAL --- */}
+      {showCropper && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className={`w-full max-w-xl rounded-3xl overflow-hidden border transition-all ${cardBg}`}>
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Crop Profile Picture</h2>
+              <button onClick={handleCropCancel} className="p-2 hover:bg-white/10 rounded-full transition">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            
+            <div className="relative h-80 bg-slate-900">
+              <Cropper
+                image={imageToCrop}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm font-bold">
+                  <span>Zoom</span>
+                  <span>{Math.round(zoom * 100)}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="3" 
+                  step="0.1" 
+                  value={zoom} 
+                  onChange={(e) => setZoom(e.target.value)}
+                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <button 
+                  onClick={handleCropCancel}
+                  className={`flex-1 py-3 rounded-xl font-bold border transition ${isDarkMode ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCropSave}
+                  className="flex-1 py-3 rounded-xl font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-400 hover:to-cyan-400 shadow-lg shadow-teal-500/20 transition"
+                >
+                  Save & Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
