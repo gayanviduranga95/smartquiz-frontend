@@ -50,9 +50,11 @@ export default function TeacherDashboard() {
   // Profile Modal State
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileData, setProfileData] = useState({
-    fullName: '', subjects: '', district: '', qualifications: ''
+    fullName: '', subjects: '', district: '', qualifications: '', profilePic: ''
   });
   const [profileMessage, setProfileMessage] = useState('');
+  const [profilePicFile, setProfilePicFile] = useState(null);
+  const [profilePicPreview, setProfilePicPreview] = useState('');
 
   useEffect(() => {
     if (!userId) { navigate('/'); return; }
@@ -126,16 +128,43 @@ export default function TeacherDashboard() {
   const handleUpdateProfile = async () => {
     setProfileMessage('Saving...');
     try {
+      const formData = new FormData();
+      formData.append('fullName', profileData.fullName);
+      formData.append('subjects', profileData.subjects);
+      formData.append('district', profileData.district);
+      formData.append('qualifications', profileData.qualifications);
+      
+      if (profilePicFile) {
+        formData.append('profilePic', profilePicFile);
+      }
+
       const response = await fetch(`https://quiz-platform-tau.vercel.app/api/auth/profile/${userId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
+        body: formData
       });
+      
       if (response.ok) {
+        const data = await response.json();
+        setProfileData({ ...profileData, profilePic: data.user.profilePic });
         setProfileMessage('✅ Profile updated successfully!');
-        setTimeout(() => { setIsProfileModalOpen(false); setProfileMessage(''); }, 1500);
+        setTimeout(() => { setIsProfileModalOpen(false); setProfileMessage(''); setProfilePicFile(null); setProfilePicPreview(''); }, 1500);
       } else { setProfileMessage('❌ Failed to update profile'); }
-    } catch (error) { setProfileMessage('❌ Failed to update profile'); }
+    } catch (error) { 
+      console.error(error);
+      setProfileMessage('❌ Failed to update profile'); 
+    }
+  };
+
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfilePicFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePicPreview(e.target?.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDeleteQuiz = async (quizId) => {
@@ -319,12 +348,20 @@ export default function TeacherDashboard() {
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveTab('dashboard'); }}
               title="Go to Dashboard"
             >
-              <img 
-                src="/assets/logo.png" 
-                alt="SmartQuiz Logo" 
-                className="h-10 object-contain transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
-                loading="lazy"
-              />
+              {profileData.profilePic ? (
+                <img 
+                  src={profileData.profilePic} 
+                  alt="Profile" 
+                  className="h-10 w-10 rounded-full object-cover transition-transform duration-300 group-hover:scale-105 flex-shrink-0 border-2 border-teal-500" 
+                />
+              ) : (
+                <img 
+                  src="/assets/logo.png" 
+                  alt="SmartQuiz Logo" 
+                  className="h-10 object-contain transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
+                  loading="lazy"
+                />
+              )}
               <div className="hidden sm:block">
                 <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz</h1>
                 <p className={`text-xs font-bold ${textSecondary}`}>Educator</p>
@@ -347,7 +384,24 @@ export default function TeacherDashboard() {
                 {isDarkMode ? '☀️' : '🌙'}
               </button>
               <button 
-                onClick={() => setIsProfileModalOpen(true)}
+                onClick={() => {
+                  // Fetch current profile data when opening modal
+                  fetch(`https://quiz-platform-tau.vercel.app/api/auth/profile/${userId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.user) {
+                        setProfileData({
+                          fullName: data.user.fullName || '',
+                          subjects: data.user.subjects || '',
+                          district: data.user.district || '',
+                          qualifications: data.user.qualifications || '',
+                          profilePic: data.user.profilePic || ''
+                        });
+                      }
+                    })
+                    .catch(err => console.error('Failed to fetch profile:', err));
+                  setIsProfileModalOpen(true);
+                }}
                 className={`p-2 rounded-lg transition ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
                 title="Profile Settings"
               >
@@ -740,13 +794,46 @@ export default function TeacherDashboard() {
       {/* PROFILE MODAL */}
       {isProfileModalOpen && (
         <div className={`fixed inset-0 backdrop-blur-lg flex items-center justify-center p-4 z-50 transition-colors ${isDarkMode ? 'bg-slate-950/80' : 'bg-slate-800/40'}`}>
-          <div className={`p-8 rounded-2xl shadow-2xl max-w-md w-full border animate-in zoom-in-95 duration-200 ${isDarkMode ? 'bg-slate-900/90 border-teal-500/30' : 'bg-white border-teal-300'}`}>
+          <div className={`p-8 rounded-2xl shadow-2xl max-w-md w-full border animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh] ${isDarkMode ? 'bg-slate-900/90 border-teal-500/30' : 'bg-white border-teal-300'}`}>
             <div className="flex justify-between items-center mb-6">
               <h3 className={`text-xl font-bold ${textPrimary}`}>Profile</h3>
               <button onClick={() => setIsProfileModalOpen(false)} className={`font-bold transition ${isDarkMode ? 'text-slate-400 hover:text-red-400' : 'text-slate-400 hover:text-red-600'}`}>✕</button>
             </div>
+            
+            {/* Profile Picture Upload */}
+            <div className="mb-6">
+              <label className={`text-xs font-bold mb-3 block ${textSecondary}`}>Profile Picture</label>
+              <div className={`p-6 rounded-xl border-2 border-dashed text-center cursor-pointer transition mb-3 ${profilePicFile || profilePicPreview ? (isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-50 border-emerald-300') : (isDarkMode ? 'bg-teal-500/10 border-teal-500/30' : 'bg-teal-50 border-teal-300')}`}>
+                <input 
+                  type="file" 
+                  id="profilePicInput" 
+                  accept="image/*" 
+                  onChange={handleProfilePicChange}
+                  className="hidden"
+                />
+                <label htmlFor="profilePicInput" className="cursor-pointer block">
+                  {profilePicPreview ? (
+                    <div className="space-y-2">
+                      <img src={profilePicPreview} alt="Preview" className="w-16 h-16 rounded-full mx-auto object-cover border-2 border-teal-500" />
+                      <p className="text-xs font-bold">📷 Change Photo</p>
+                    </div>
+                  ) : profileData.profilePic ? (
+                    <div className="space-y-2">
+                      <img src={profileData.profilePic} alt="Current" className="w-16 h-16 rounded-full mx-auto object-cover border-2 border-teal-500" />
+                      <p className="text-xs font-bold">📷 Change Photo</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-2xl">📷</p>
+                      <p className="text-xs font-bold">Click or Drag Photo</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+            
             <div className="space-y-3 mb-6">
-              <input type="text" placeholder="Name" value={profileData.fullName} onChange={(e) => setProfileData({...profileData, fullName: e.target.value})} className={`w-full p-3 border rounded-lg text-sm focus:outline-none ${inputBg}`} />
+              <input type="text" placeholder="Full Name" value={profileData.fullName} onChange={(e) => setProfileData({...profileData, fullName: e.target.value})} className={`w-full p-3 border rounded-lg text-sm focus:outline-none ${inputBg}`} />
               <input type="text" placeholder="Subjects" value={profileData.subjects} onChange={(e) => setProfileData({...profileData, subjects: e.target.value})} className={`w-full p-3 border rounded-lg text-sm focus:outline-none ${inputBg}`} />
               <input type="text" placeholder="District" value={profileData.district} onChange={(e) => setProfileData({...profileData, district: e.target.value})} className={`w-full p-3 border rounded-lg text-sm focus:outline-none ${inputBg}`} />
               <input type="text" placeholder="Qualifications" value={profileData.qualifications} onChange={(e) => setProfileData({...profileData, qualifications: e.target.value})} className={`w-full p-3 border rounded-lg text-sm focus:outline-none ${inputBg}`} />
