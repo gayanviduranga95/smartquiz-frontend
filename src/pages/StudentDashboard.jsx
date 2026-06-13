@@ -8,9 +8,16 @@ import useThemeMode from '../hooks/useThemeMode';
 export default function StudentDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const username = location.state?.username || 'Student';
-  const queryUserId = new URLSearchParams(location.search).get('studentId');
-  const userId = location.state?.userId || queryUserId; 
+  
+  // Auth state with fallback to localStorage
+  const storedUser = JSON.parse(localStorage.getItem('smartquiz-user') || '{}');
+  const username = location.state?.username || storedUser.username || 'Student';
+  const userId = location.state?.userId || storedUser.id; 
+
+  const handleLogout = () => {
+    localStorage.removeItem('smartquiz-user');
+    navigate('/');
+  };
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useThemeMode();

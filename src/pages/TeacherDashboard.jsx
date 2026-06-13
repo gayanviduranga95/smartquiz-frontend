@@ -7,8 +7,15 @@ export default function TeacherDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const username = location.state?.username || 'Teacher';
-  const userId = location.state?.userId; 
+  // Auth state with fallback to localStorage
+  const storedUser = JSON.parse(localStorage.getItem('smartquiz-user') || '{}');
+  const username = location.state?.username || storedUser.username || 'Teacher';
+  const userId = location.state?.userId || storedUser.id; 
+
+  const handleLogout = () => {
+    localStorage.removeItem('smartquiz-user');
+    navigate('/');
+  };
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useThemeMode();
@@ -516,7 +523,7 @@ export default function TeacherDashboard() {
                 ⚙️
               </button>
               <button 
-                onClick={() => navigate('/')}
+                onClick={handleLogout}
                 className={`px-4 py-2 rounded-lg font-bold transition text-sm ${isDarkMode ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'}`}
               >
                 🚪 Exit
@@ -672,7 +679,7 @@ export default function TeacherDashboard() {
                       <p className={`font-bold ${textSecondary}`}>No quizzes yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-6">
                       {filteredQuizzes.map(quiz => {
                         const attempts = studentScores.filter(s => s.quizId?._id === quiz._id).length;
                         const avg = attempts > 0 

@@ -37,6 +37,7 @@ export default function Login() {
   // System State
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Image Crop State
   const [imageToCrop, setImageToCrop] = useState(null);
@@ -102,6 +103,15 @@ export default function Login() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
         
+        // --- Persistence Logic ---
+        if (rememberMe) {
+          localStorage.setItem('smartquiz-user', JSON.stringify({
+            id: data.user.id,
+            username: data.user.username,
+            role: data.user.role
+          }));
+        }
+
         setMessage('✅ Login successful! Redirecting...');
         
         setTimeout(() => {
@@ -246,7 +256,16 @@ export default function Login() {
         </div>
         
         {isLogin && (
-          <div className="flex justify-end pr-1">
+          <div className="flex items-center justify-between px-1">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={rememberMe} 
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+              />
+              <span className={`text-sm font-bold transition ${isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-600 group-hover:text-slate-700'}`}>Remember me</span>
+            </label>
             <Link
               to="/forgot-password"
               className={`text-sm font-bold transition ${isDarkMode ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-700'}`}
