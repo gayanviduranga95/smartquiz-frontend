@@ -467,7 +467,7 @@ export default function StudentDashboard() {
           <button onClick={() => { setActiveTab('find-teachers'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'find-teachers' && !activeClass ? (isDarkMode ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'bg-teal-50 text-teal-700 border border-teal-200') : (isDarkMode ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800')}`}>🔍 Course Catalog</button>
         </nav>
         <div className={`p-4 border-t ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <button onClick={() => navigate('/')} className={`w-full font-bold py-2 rounded-lg transition text-sm border ${isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>Log Out</button>
+          <button onClick={handleLogout} className={`w-full font-bold py-2 rounded-lg transition text-sm border ${isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>Log Out</button>
         </div>
       </aside>
 
@@ -927,7 +927,7 @@ export default function StudentDashboard() {
             <span className="text-xs font-bold">Browse</span>
           </button>
           <button 
-            onClick={() => navigate('/')}
+            onClick={handleLogout}
             className={`flex flex-col items-center justify-center gap-1 py-2 px-4 rounded-lg transition-all ${isDarkMode ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50'}`}
           >
             <span className="text-xl">🚪</span>
