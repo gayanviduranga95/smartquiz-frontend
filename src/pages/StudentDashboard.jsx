@@ -19,6 +19,7 @@ export default function StudentDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [revealedHints, setRevealedHints] = useState({});
   
   const [teachers, setTeachers] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
@@ -136,6 +137,17 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleStartQuiz = (quiz) => {
+    setActiveQuiz(quiz);
+    setSelectedAnswers({});
+    setQuizResult(null);
+    setRevealedHints({});
+  };
+
+  const toggleHint = (questionIndex) => {
+    setRevealedHints(prev => ({ ...prev, [questionIndex]: !prev[questionIndex] }));
+  };
+
   const handleEnterClass = async (enrollment) => {
     setActiveClass(enrollment); 
     setActiveQuiz(null); 
@@ -153,11 +165,13 @@ export default function StudentDashboard() {
     setQuizResult(null); 
     setReviewQuiz(null); 
     setSelectedAnswers({}); 
+    setRevealedHints({});
   };
 
   const takenQuizIds = myScores.map(score => score.quizId?._id);
   const availableQuizzes = classQuizzes.filter(q => !takenQuizIds.includes(q._id));
   const completedQuizzes = classQuizzes.filter(q => takenQuizIds.includes(q._id));
+  const answeredCount = Object.keys(selectedAnswers).length;
 
   // --- Dynamic Theme Classes ---
   const themeBg = isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-slate-50 text-slate-800';
@@ -288,6 +302,7 @@ export default function StudentDashboard() {
                <div>
                  <h2 className={`text-3xl font-black mb-2 ${textPrimary}`}>{reviewQuiz.quizId?.title || 'Unknown Quiz'}</h2>
                  <p className={`font-medium ${textSecondary}`}>Review your past answers below.</p>
+                 {reviewQuiz.quizId?.ageGroup && <p className={`mt-2 inline-flex text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-200 text-cyan-700'}`}>Age {reviewQuiz.quizId.ageGroup}</p>}
                </div>
                <div className={`px-6 py-4 rounded-2xl text-center border ${isDarkMode ? 'bg-teal-500/10 border-teal-500/20' : 'bg-teal-50 border-teal-200'}`}>
                  <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-400' : 'text-teal-600'}`}>Score</p>
@@ -300,7 +315,8 @@ export default function StudentDashboard() {
                  const isCorrect = studentChoice === q.correctAnswer;
                  return (
                    <div key={qIndex} className={`p-8 rounded-2xl border ${isDarkMode ? (isCorrect ? 'bg-emerald-500/5 border-white/10' : 'bg-red-500/5 border-white/10') : (isCorrect ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100')}`}>
-                     <p className={`text-xl font-bold mb-6 ${textPrimary}`}><span className={isCorrect ? (isDarkMode ? "text-emerald-400 mr-2" : "text-emerald-600 mr-2") : (isDarkMode ? "text-red-400 mr-2" : "text-red-600 mr-2")}>{qIndex + 1}.</span> {q.questionText}</p>
+                    {!reviewQuiz.quizId?.imageOnly && <p className={`text-xl font-bold mb-6 ${textPrimary}`}><span className={isCorrect ? (isDarkMode ? "text-emerald-400 mr-2" : "text-emerald-600 mr-2") : (isDarkMode ? "text-red-400 mr-2" : "text-red-600 mr-2")}>{qIndex + 1}.</span> {q.questionText}</p>}
+                      {q.image && <img src={q.image} alt={`Question ${qIndex + 1}`} className="mb-5 w-full max-h-80 object-contain rounded-xl border border-white/10 bg-white" />}
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        {q.options.map((option, optIndex) => {
                          let optionClass = isDarkMode ? "bg-white/5 border-white/10 text-slate-400 opacity-50" : "bg-slate-50 border-slate-200 text-slate-500 opacity-60";
@@ -309,6 +325,8 @@ export default function StudentDashboard() {
                          return <div key={optIndex} className={`p-4 text-left rounded-xl border ${optionClass}`}>{option}</div>;
                        })}
                      </div>
+                      {q.hint && <div className={`mt-4 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>💡 Hint: {q.hint}</div>}
+                      {q.explanation && <div className={`mt-3 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-100' : 'bg-cyan-50 border-cyan-100 text-cyan-900'}`}>🧠 Explanation: {q.explanation}</div>}
                    </div>
                  );
                })}
@@ -323,6 +341,7 @@ export default function StudentDashboard() {
                   <div>
                     <h2 className={`text-3xl font-black mb-2 ${textPrimary}`}>{activeQuiz.title}</h2>
                     <p className={`font-medium ${textSecondary}`}>Answer all {activeQuiz.questions.length} questions before submitting.</p>
+                    {activeQuiz.ageGroup && <p className={`mt-2 inline-flex text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-200 text-cyan-700'}`}>Age {activeQuiz.ageGroup}</p>}
                   </div>
                   {timeLeft !== null && (
                     <div className={`px-6 py-4 rounded-2xl text-center border ${isDarkMode ? 'bg-slate-900/50' : 'bg-slate-50'} ${timeLeft < 60 ? (isDarkMode ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3)] animate-pulse' : 'border-red-400 shadow-md animate-pulse') : (isDarkMode ? 'border-white/10' : 'border-slate-200')}`}>
@@ -334,7 +353,11 @@ export default function StudentDashboard() {
                 <div className="space-y-8">
                   {activeQuiz.questions.map((q, qIndex) => (
                     <div key={qIndex} className={`p-8 rounded-2xl border shadow-sm ${cardBg}`}>
-                      <p className={`text-xl font-bold mb-6 ${textPrimary}`}><span className={`${isDarkMode ? 'text-teal-400' : 'text-teal-600'} mr-2`}>{qIndex + 1}.</span> {q.questionText}</p>
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        {!activeQuiz.imageOnly && <p className={`text-xl font-bold ${textPrimary}`}><span className={`${isDarkMode ? 'text-teal-400' : 'text-teal-600'} mr-2`}>{qIndex + 1}.</span> {q.questionText}</p>}
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isDarkMode ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>Question {qIndex + 1}/{activeQuiz.questions.length}</span>
+                      </div>
+                      {q.image && <img src={q.image} alt={`Question ${qIndex + 1}`} className="mb-5 w-full max-h-80 object-contain rounded-xl border border-white/10 bg-white" />}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {q.options.map((option, optIndex) => (
                           <button 
@@ -350,6 +373,24 @@ export default function StudentDashboard() {
                           </button>
                         ))}
                       </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        {q.hint && (
+                          <button onClick={() => toggleHint(qIndex)} className={`text-sm font-bold px-3 py-2 rounded-lg border transition ${isDarkMode ? 'bg-white/5 border-white/10 text-cyan-300 hover:bg-white/10' : 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100'}`}>
+                            {revealedHints[qIndex] ? '🙈 Hide Hint' : '💡 Show Hint'}
+                          </button>
+                        )}
+                        <span className={`text-sm font-medium ${textSecondary}`}>{answeredCount} / {activeQuiz.questions.length} answered</span>
+                      </div>
+                      {revealedHints[qIndex] && q.hint && (
+                        <div className={`mt-3 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-100' : 'bg-cyan-50 border-cyan-100 text-cyan-900'}`}>
+                          💡 {q.hint}
+                        </div>
+                      )}
+                      {selectedAnswers[qIndex] && q.explanation && (
+                        <div className={`mt-3 p-4 rounded-xl border text-sm ${selectedAnswers[qIndex] === q.correctAnswer ? (isDarkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100' : 'bg-emerald-50 border-emerald-100 text-emerald-800') : (isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-100' : 'bg-amber-50 border-amber-100 text-amber-800')}`}>
+                          🧠 {q.explanation}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -410,6 +451,11 @@ export default function StudentDashboard() {
                     <div>
                       <h4 className={`text-lg font-bold ${textPrimary}`}>{quiz.title}</h4>
                       <p className={`text-sm font-medium mb-4 ${isDarkMode ? 'text-teal-200/70' : 'text-teal-600'}`}>{quiz.questions.length} Questions • {quiz.timeLimit > 0 ? `${quiz.timeLimit} Min` : '⏱️ No Limit'}</p>
+                      {quiz.ageGroup && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full mb-4 border ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-200 text-cyan-700'}`}>
+                          👶 Age {quiz.ageGroup}
+                        </span>
+                      )}
                       
                       {/* Quiz Progress Bar */}
                       <div className="mb-4">
@@ -418,7 +464,7 @@ export default function StudentDashboard() {
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => setActiveQuiz(quiz)} className={`w-full font-bold py-3 rounded-xl transition-all duration-300 border ${isDarkMode ? 'bg-teal-500/20 border-teal-500/30 text-teal-300 hover:bg-teal-500 hover:text-white hover:shadow-[0_0_20px_rgba(20,184,166,0.3)]' : 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-500 hover:text-white hover:shadow-lg'}`}>Start Quiz</button>
+                    <button onClick={() => handleStartQuiz(quiz)} className={`w-full font-bold py-3 rounded-xl transition-all duration-300 border ${isDarkMode ? 'bg-teal-500/20 border-teal-500/30 text-teal-300 hover:bg-teal-500 hover:text-white hover:shadow-[0_0_20px_rgba(20,184,166,0.3)]' : 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-500 hover:text-white hover:shadow-lg'}`}>Start Quiz</button>
                   </div>
                 ))}
               </div>

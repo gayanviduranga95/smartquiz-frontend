@@ -42,6 +42,8 @@ export default function TeacherDashboard() {
   const [aiError, setAiError] = useState('');
   const [quizTitle, setQuizTitle] = useState('');
   const [quizGrade, setQuizGrade] = useState('Grade 10');
+  const [quizAgeGroup, setQuizAgeGroup] = useState('11-13');
+  const [quizImageOnly, setQuizImageOnly] = useState(false);
   const [quizTimeLimit, setQuizTimeLimit] = useState(15);
   const [numQuestions, setNumQuestions] = useState(5);
   const [draftQuestions, setDraftQuestions] = useState([]); 
@@ -266,6 +268,8 @@ export default function TeacherDashboard() {
         body: JSON.stringify({
           title: editingQuiz.title,
           grade: editingQuiz.grade,
+          ageGroup: editingQuiz.ageGroup || '',
+          imageOnly: !!editingQuiz.imageOnly,
           questions: editingQuiz.questions
         })
       });
@@ -313,8 +317,10 @@ export default function TeacherDashboard() {
     if (!selectedFile) return;
     setIsGenerating(true); setAiError(''); setSaveMessage('');
     const formData = new FormData();
-    formData.append('pdf', selectedFile);
+    formData.append('media', selectedFile);
     formData.append('numQuestions', numQuestions);
+    formData.append('ageGroup', quizAgeGroup);
+    formData.append('imageOnly', quizImageOnly ? 'true' : 'false');
     try {
       const response = await fetch('https://quiz-platform-tau.vercel.app/api/ai/generate', { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Failed to generate questions.');
@@ -340,7 +346,18 @@ export default function TeacherDashboard() {
   };
 
   const handleAddManualQuestion = () => {
-    setDraftQuestions([...draftQuestions, { questionText: '', options: ['', '', '', ''], correctAnswer: '' }]);
+    setDraftQuestions([...draftQuestions, { questionText: '', options: ['', '', '', ''], correctAnswer: '', hint: '', explanation: '', image: '' }]);
+  };
+
+  const handleDraftQuestionImage = (qIndex, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const updated = [...draftQuestions];
+      updated[qIndex] = { ...updated[qIndex], image: reader.result };
+      setDraftQuestions(updated);
+    };
+    reader.readAsDataURL(file);
   };
 
   const updateDraftQuestion = (qIndex, field, value) => {
@@ -370,6 +387,8 @@ export default function TeacherDashboard() {
           title: quizTitle, 
           teacherId: userId, 
           grade: quizGrade, 
+          ageGroup: quizAgeGroup,
+          imageOnly: quizImageOnly,
           timeLimit: quizTimeLimit, 
           questions: draftQuestions 
         })
@@ -394,6 +413,13 @@ export default function TeacherDashboard() {
   const inputBg = isDarkMode 
     ? 'bg-slate-900/50 border-white/10 text-white focus:border-teal-400' 
     : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-teal-500';
+  const ageGroupOptions = [
+    { value: '6-8', label: '6–8 years' },
+    { value: '9-10', label: '9–10 years' },
+    { value: '11-13', label: '11–13 years' },
+    { value: '14-16', label: '14–16 years' },
+    { value: '17+', label: '17+ years' }
+  ];
 
   const tabItems = [
     { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
@@ -646,6 +672,7 @@ export default function TeacherDashboard() {
                               <p>📝 {quiz.questions?.length} Q's</p>
                               <p>📊 {attempts} attempts · {avg}%</p>
                             </div>
+                            {quiz.ageGroup && <div className={`mb-3 inline-flex text-[11px] font-bold px-2 py-1 rounded-full border ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-200 text-cyan-700'}`}>Age {quiz.ageGroup}</div>}
                             <div className="flex gap-2">
                               <button onClick={() => setEditingQuiz(quiz)} className={`flex-1 px-2 py-2 rounded text-xs font-bold transition ${isDarkMode ? 'bg-teal-500/20 text-teal-300 hover:bg-teal-500/30' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}>✏️ Edit</button>
                               <button onClick={() => handleDeleteQuiz(quiz._id)} className={`flex-1 px-2 py-2 rounded text-xs font-bold transition ${isDarkMode ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>🗑️ Delete</button>
@@ -671,18 +698,32 @@ export default function TeacherDashboard() {
                           {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
                         </select>
                       </div>
+                      <div>
+                        <label className={`text-xs font-bold mb-1 block ${textSecondary}`}>Age Group</label>
+                        <select value={editingQuiz.ageGroup || ''} onChange={(e) => setEditingQuiz({...editingQuiz, ageGroup: e.target.value})} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`}>
+                          <option value="">Not set</option>
+                          {ageGroupOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-3 md:col-span-2">
+                        <input id="edit-image-only" type="checkbox" checked={!!editingQuiz.imageOnly} onChange={(e) => setEditingQuiz({ ...editingQuiz, imageOnly: e.target.checked })} />
+                        <label htmlFor="edit-image-only" className={`text-sm font-bold ${textSecondary}`}>Image-only quiz</label>
+                      </div>
                     </div>
                     
                     <div className="space-y-3">
                       {editingQuiz.questions.map((q, qIdx) => (
                         <div key={qIdx} className={`p-4 rounded-lg border ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
                           <p className={`text-xs font-bold mb-2 ${textSecondary}`}>Q{qIdx + 1}</p>
-                          <textarea value={q.questionText} onChange={(e) => updateEditingQuestion(qIdx, 'questionText', e.target.value)} className={`w-full p-2 border rounded text-sm mb-2 focus:outline-none ${inputBg}`} rows="2" />
+                          <textarea value={q.questionText} onChange={(e) => updateEditingQuestion(qIdx, 'questionText', e.target.value)} placeholder={editingQuiz.imageOnly ? 'Optional short prompt' : 'Question text'} className={`w-full p-2 border rounded text-sm mb-2 focus:outline-none ${inputBg}`} rows="2" />
+                          {q.image && <img src={q.image} alt={`Question ${qIdx + 1}`} className="mb-2 w-full max-h-48 object-contain rounded-lg border" />}
                           <div className="grid grid-cols-2 gap-2">
                             {q.options.map((o, oIdx) => (
                               <input key={oIdx} type="text" value={o} onChange={(e) => updateEditingOption(qIdx, oIdx, e.target.value)} className={`p-2 border rounded text-xs focus:outline-none ${inputBg}`} />
                             ))}
                           </div>
+                            <textarea value={q.hint || ''} onChange={(e) => updateEditingQuestion(qIdx, 'hint', e.target.value)} className={`w-full mt-2 p-2 border rounded text-xs focus:outline-none ${inputBg}`} rows="2" placeholder="Hint for students" />
+                            <textarea value={q.explanation || ''} onChange={(e) => updateEditingQuestion(qIdx, 'explanation', e.target.value)} className={`w-full mt-2 p-2 border rounded text-xs focus:outline-none ${inputBg}`} rows="2" placeholder="Answer explanation" />
                           <select value={q.correctAnswer} onChange={(e) => updateEditingQuestion(qIdx, 'correctAnswer', e.target.value)} className={`w-full mt-2 p-2 border rounded text-xs focus:outline-none ${inputBg}`}>
                             {q.options.map((o, i) => <option key={i} value={o}>{o}</option>)}
                           </select>
@@ -715,12 +756,26 @@ export default function TeacherDashboard() {
                     </select>
                   </div>
                   <div>
+                    <label className={`text-xs font-bold mb-2 block ${textSecondary}`}>Age Group</label>
+                    <select value={quizAgeGroup} onChange={(e) => setQuizAgeGroup(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`}>
+                      {ageGroupOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3 self-end pb-2">
+                    <input id="image-only" type="checkbox" checked={quizImageOnly} onChange={(e) => setQuizImageOnly(e.target.checked)} />
+                    <label htmlFor="image-only" className={`text-sm font-bold ${textSecondary}`}>Image-only quiz</label>
+                  </div>
+                  <div>
                     <label className={`text-xs font-bold mb-2 block ${textSecondary}`}>Time (min)</label>
                     <input type="number" min="0" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(Number(e.target.value))} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`} />
                   </div>
                 </div>
 
-                {/* PDF Upload */}
+                <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${isDarkMode ? 'bg-teal-500/10 border-teal-500/20 text-teal-200' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>
+                  AI will tailor wording, examples, and difficulty for the selected age group.
+                </div>
+
+                {/* PDF / Image Upload */}
                 <div 
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
@@ -730,10 +785,10 @@ export default function TeacherDashboard() {
                       : isDarkMode ? 'bg-teal-500/10 border-teal-500/30' : 'bg-teal-50 border-teal-300'
                   }`}
                 >
-                  <input type="file" id="pdf" accept=".pdf" onChange={(e) => setSelectedFile(e.target.files?.[0])} className="hidden" />
-                  <label htmlFor="pdf" className="cursor-pointer block">
-                    <p className="text-3xl mb-2">{selectedFile ? '✅' : '📄'}</p>
-                    <p className="font-bold">{selectedFile ? selectedFile.name : 'Drop PDF or Click'}</p>
+                  <input type="file" id="media" accept=".pdf,image/*" onChange={(e) => setSelectedFile(e.target.files?.[0])} className="hidden" />
+                  <label htmlFor="media" className="cursor-pointer block">
+                    <p className="text-3xl mb-2">{selectedFile ? '✅' : '📄🖼️'}</p>
+                    <p className="font-bold">{selectedFile ? selectedFile.name : 'Drop PDF or Image / Click'}</p>
                   </label>
                 </div>
 
@@ -759,12 +814,24 @@ export default function TeacherDashboard() {
                   <div key={qIdx} className={`p-6 rounded-2xl border relative ${cardBg}`}>
                     <button onClick={() => removeDraftQuestion(qIdx)} className={`absolute top-4 right-4 font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>✕</button>
                     <p className={`text-xs font-bold mb-2 ${textSecondary}`}>Question {qIdx + 1}</p>
-                    <textarea value={q.questionText} onChange={(e) => updateDraftQuestion(qIdx, 'questionText', e.target.value)} className={`w-full p-3 border rounded-lg mb-3 focus:outline-none ${inputBg}`} rows="2" />
+                    <textarea value={q.questionText} onChange={(e) => updateDraftQuestion(qIdx, 'questionText', e.target.value)} placeholder={quizImageOnly ? 'Optional short prompt' : 'Question text'} className={`w-full p-3 border rounded-lg mb-3 focus:outline-none ${inputBg}`} rows="2" />
+                    {q.image && (
+                      <img src={q.image} alt={`Question ${qIdx + 1}`} className="mb-3 w-full max-h-56 object-contain rounded-lg border" />
+                    )}
+                    <div className="mb-3 flex items-center gap-3">
+                      <label className={`text-xs font-bold px-3 py-2 rounded-lg border cursor-pointer ${isDarkMode ? 'bg-white/5 border-white/10 text-cyan-300 hover:bg-white/10' : 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100'}`}>
+                        📷 Add Image
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleDraftQuestionImage(qIdx, e.target.files?.[0])} />
+                      </label>
+                      {q.image && <button type="button" onClick={() => updateDraftQuestion(qIdx, 'image', '')} className={`text-xs font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>Remove image</button>}
+                    </div>
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       {q.options.map((o, oIdx) => (
                         <input key={oIdx} type="text" placeholder={`Option ${oIdx + 1}`} value={o} onChange={(e) => updateDraftOption(qIdx, oIdx, e.target.value)} className={`p-2 border rounded focus:outline-none text-sm ${inputBg}`} />
                       ))}
                     </div>
+                      <textarea value={q.hint || ''} onChange={(e) => updateDraftQuestion(qIdx, 'hint', e.target.value)} className={`w-full p-2 border rounded focus:outline-none text-sm mb-3 ${inputBg}`} rows="2" placeholder="Hint for students" />
+                      <textarea value={q.explanation || ''} onChange={(e) => updateDraftQuestion(qIdx, 'explanation', e.target.value)} className={`w-full p-2 border rounded focus:outline-none text-sm mb-3 ${inputBg}`} rows="2" placeholder="Answer explanation" />
                     <select value={q.correctAnswer} onChange={(e) => updateDraftQuestion(qIdx, 'correctAnswer', e.target.value)} className={`w-full p-2 border rounded focus:outline-none text-sm font-bold ${isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>
                       <option value="">Select Answer</option>
                       {q.options.filter(o => o).map((o, i) => <option key={i} value={o}>{o}</option>)}
