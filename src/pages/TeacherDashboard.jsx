@@ -581,7 +581,7 @@ export default function TeacherDashboard() {
             <div className="space-y-6 animate-in fade-in duration-300">
               
               {/* DASHBOARD HERO SECTION */}
-              <div className={`rounded-3xl p-8 md:p-12 mb-8 border relative overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-teal-900/30 via-cyan-900/20 to-slate-900/40 border-teal-500/20 shadow-[0_0_50px_rgba(20,184,166,0.15)]' : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-white border-teal-200 shadow-2xl'}`}>
+              <div className={`rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 mb-8 border relative overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-teal-900/30 via-cyan-900/20 to-slate-900/40 border-teal-500/20 shadow-[0_0_50px_rgba(20,184,166,0.15)]' : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-white border-teal-200 shadow-2xl'}`}>
                 {/* Background Shine Effect */}
                 <div className="glass-shine absolute inset-0 rounded-3xl pointer-events-none"></div>
                 
@@ -597,7 +597,7 @@ export default function TeacherDashboard() {
                   </div>
 
                   {/* Analytics Grid inside Hero */}
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     {[
                       { label: 'Total Quizzes', value: analytics.totalQuizzes, icon: '📚', highlightClass: isDarkMode ? 'hover:border-teal-500/50 hover:bg-teal-500/10' : 'hover:border-teal-400 hover:bg-white/80' },
                       { label: 'Students', value: analytics.totalStudents, icon: '👨‍🎓', highlightClass: isDarkMode ? 'hover:border-cyan-500/50 hover:bg-cyan-500/10' : 'hover:border-cyan-400 hover:bg-white/80' },
@@ -605,7 +605,7 @@ export default function TeacherDashboard() {
                       { label: 'Avg Score', value: `${analytics.averageScore}%`, icon: '⭐', highlightClass: isDarkMode ? 'hover:border-amber-500/50 hover:bg-amber-500/10' : 'hover:border-amber-400 hover:bg-white/80' },
                       { label: 'Pending', value: analytics.pendingRequests, icon: '🔔', highlightClass: analytics.pendingRequests > 0 ? (isDarkMode ? 'border-red-500/50 bg-red-500/10' : 'border-red-400 bg-red-50') : (isDarkMode ? 'hover:border-slate-500/50 hover:bg-slate-500/10' : 'hover:border-slate-400 hover:bg-white/80'), highlightText: analytics.pendingRequests > 0 }
                     ].map((stat, idx) => (
-                      <div key={idx} className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15' : 'bg-white/60 border-white/80'} ${stat.highlightClass}`}>
+                      <div key={idx} className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15' : 'bg-white/60 border-white/80'} ${stat.highlightClass} ${idx === 4 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
                         <div className="flex items-center justify-between mb-3">
                           <p className={`text-xs font-bold uppercase tracking-widest ${stat.highlightText ? 'text-red-500' : (isDarkMode ? 'text-slate-300/70' : 'text-slate-600')}`}>{stat.label}</p>
                           <span className="text-2xl group-hover:animate-float">{stat.icon}</span>

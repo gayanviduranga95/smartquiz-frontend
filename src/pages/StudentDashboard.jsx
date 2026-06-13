@@ -682,7 +682,7 @@ export default function StudentDashboard() {
         ) : (
           <div className="max-w-7xl mx-auto">
             {/* DASHBOARD HERO SECTION */}
-            <div className={`rounded-3xl p-8 md:p-12 mb-12 border relative overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-teal-900/30 via-cyan-900/20 to-slate-900/40 border-teal-500/20 shadow-[0_0_50px_rgba(20,184,166,0.15)]' : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-white border-teal-200 shadow-2xl'}`}>
+            <div className={`rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 mb-12 border relative overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-teal-900/30 via-cyan-900/20 to-slate-900/40 border-teal-500/20 shadow-[0_0_50px_rgba(20,184,166,0.15)]' : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-white border-teal-200 shadow-2xl'}`}>
               {/* Background Shine Effect */}
               <div className="glass-shine absolute inset-0 rounded-3xl pointer-events-none"></div>
               
@@ -787,7 +787,7 @@ export default function StudentDashboard() {
                     <p className={`text-sm ${textSecondary}} mt-2`}>Check back later for available courses</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {teachers.map(teacher => (
                       <div key={teacher._id} onMouseEnter={() => setHoveredCard(teacher._id)} onMouseLeave={() => setHoveredCard(null)} className={`p-6 rounded-2xl border transition-all duration-300 overflow-hidden group ${isDarkMode ? 'bg-white/5 border-white/10 hover:border-teal-500/50 hover:bg-white/8 hover:shadow-[0_0_30px_rgba(20,184,166,0.15)]' : 'bg-white border-slate-200 hover:border-teal-400 hover:shadow-2xl hover:bg-white'}`}>
                         {/* Card Shine Effect */}

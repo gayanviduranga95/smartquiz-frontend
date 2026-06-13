@@ -7,16 +7,16 @@ export function AuthShell({ title, subtitle, children, isDarkMode = false, maxWi
   const titleGradient = isDarkMode ? 'from-teal-400 to-cyan-400' : 'from-teal-600 to-cyan-600';
 
   return (
-    <main className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500 ${themeBg}`}>
-      {/* Background Glows */}
-      <div className={`absolute top-[-15%] left-[-10%] w-[40rem] h-[40rem] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-teal-600/20' : 'bg-teal-300/40'}`} />
-      <div className={`absolute bottom-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`} />
+    <main className={`min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-x-hidden transition-colors duration-500 ${themeBg}`}>
+      {/* Background Glows - Smaller on mobile */}
+      <div className={`absolute top-[-10%] left-[-10%] w-[20rem] sm:w-[40rem] h-[20rem] sm:h-[40rem] rounded-full blur-[80px] sm:blur-[120px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-teal-600/20' : 'bg-teal-300/40'}`} />
+      <div className={`absolute bottom-[-5%] right-[-5%] w-[15rem] sm:w-[30rem] h-[15rem] sm:h-[30rem] rounded-full blur-[60px] sm:blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`} />
 
-      <section className={`backdrop-blur-2xl p-8 sm:p-10 rounded-3xl w-full ${maxWidth} border z-10 relative transition-all duration-500 ${cardBg}`}>
-        <h1 className={`text-4xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r mb-2 ${titleGradient}`}>
+      <section className={`backdrop-blur-2xl p-6 sm:p-10 rounded-2xl sm:rounded-3xl w-full ${maxWidth} border z-10 relative transition-all duration-500 ${cardBg} my-8`}>
+        <h1 className={`text-3xl sm:text-4xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r mb-2 ${titleGradient}`}>
           {title}
         </h1>
-        <p className={`text-center mb-8 font-medium ${textSecondary}`}>{subtitle}</p>
+        <p className={`text-center mb-6 sm:mb-8 text-sm sm:text-base font-medium ${textSecondary}`}>{subtitle}</p>
         {children}
       </section>
     </main>
@@ -45,13 +45,13 @@ export function ThemeToggle({ isDarkMode, toggleTheme }) {
   return (
     <button 
       onClick={toggleTheme}
-      className={`absolute top-6 right-6 p-3 rounded-full backdrop-blur-md border transition-all z-20 ${isDarkMode ? 'bg-white/10 border-white/20 hover:bg-white/20 text-yellow-300' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'}`}
+      className={`fixed top-4 right-4 sm:top-6 sm:right-6 p-2.5 sm:p-3 rounded-full backdrop-blur-md border transition-all z-50 ${isDarkMode ? 'bg-white/10 border-white/20 hover:bg-white/20 text-yellow-300' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-md'}`}
       title="Toggle Theme"
     >
       {isDarkMode ? (
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
       ) : (
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
       )}
     </button>
   );

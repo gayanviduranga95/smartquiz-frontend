@@ -180,7 +180,7 @@ export default function Login() {
         {/* --- ONLY SHOW ROLE TOGGLE DURING REGISTRATION --- */}
         {!isLogin && (
           <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className={`flex p-1 rounded-xl mb-6 border transition-colors ${toggleBg}`}>
+            <div className={`flex flex-col sm:flex-row p-1 rounded-xl mb-6 border transition-colors ${toggleBg}`}>
               <button 
                 type="button" 
                 onClick={() => setRole('student')} 
