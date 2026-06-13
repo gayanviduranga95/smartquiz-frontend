@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
 
 export default function ForgotPassword() {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
@@ -18,11 +19,12 @@ export default function ForgotPassword() {
       const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ username, email })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
       setMessage(data.message);
+      setUsername('');
       setEmail('');
     } catch (error) {
       setIsError(true);
@@ -33,9 +35,21 @@ export default function ForgotPassword() {
   };
 
   return (
-    <AuthShell title="Forgot password?" subtitle="Enter the email used for your SmartQuiz account.">
+    <AuthShell title="Forgot password?" subtitle="Enter the username and email for the account you want to reset.">
       {message && <StatusMessage message={message} isError={isError} />}
       <form onSubmit={handleSubmit} className="space-y-5">
+        <label className="block">
+          <span className="block mb-2 text-sm font-bold text-slate-700">Username</span>
+          <input
+            type="text"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder="Your account username"
+            autoComplete="username"
+            className="w-full p-4 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
+            required
+          />
+        </label>
         <label className="block">
           <span className="block mb-2 text-sm font-bold text-slate-700">Email address</span>
           <input
