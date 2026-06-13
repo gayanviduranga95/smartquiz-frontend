@@ -251,6 +251,13 @@ export default function TeacherDashboard() {
     } catch (error) { console.error(error); }
   };
 
+  const handleDecline = async (enrollmentId) => {
+    try {
+      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/decline/${enrollmentId}`, { method: 'PUT' });
+      if (res.ok) fetchRequests();
+    } catch (error) { console.error(error); }
+  };
+
   const handleSaveEdit = async () => {
     try {
       await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/${editingQuiz._id}`, {
@@ -830,35 +837,45 @@ export default function TeacherDashboard() {
           {activeTab === 'student-requests' && (
             <div className="animate-in fade-in duration-300">
               <h1 className={`text-3xl font-black mb-6 ${textPrimary}`}>👨‍🎓 Class Roster</h1>
+              {(() => {
+                const visibleRequests = enrollmentRequests.filter(r => r.status !== 'declined');
+                return (
+                  <>
               
-              {enrollmentRequests.length === 0 ? (
-                <div className={`p-12 rounded-2xl border-2 border-dashed text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}>
-                  <p className="text-3xl mb-2">👨‍🎓</p>
-                  <p className={`font-bold ${textSecondary}`}>No requests</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {enrollmentRequests.map(r => (
-                    <div key={r._id} className={`p-4 rounded-xl border ${cardBg}`}>
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white ${isDarkMode ? 'bg-teal-500/30' : 'bg-teal-200'}`}>{r.studentId?.fullName?.[0] || '?'}</div>
-                        <div className="flex-1">
-                          <p className={`font-bold ${textPrimary}`}>{r.studentId?.fullName || r.studentId?.username}</p>
-                          <p className={`text-xs ${textSecondary}`}>{r.grade}</p>
-                        </div>
-                        <span className={`text-xs font-bold px-2 py-1 rounded ${r.status === 'pending' ? (isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-700') : (isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700')}`}>
-                          {r.status === 'pending' ? '⏳ Pending' : '✅ Approved'}
-                        </span>
-                      </div>
-                      {r.status === 'pending' ? (
-                        <button onClick={() => handleApprove(r._id)} className={`w-full font-bold py-2 rounded-lg transition text-sm ${isDarkMode ? 'bg-teal-500/20 text-teal-300 hover:bg-teal-500/30' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}>✓ Approve</button>
-                      ) : (
-                        <div className={`w-full text-center font-bold py-2 rounded-lg text-sm ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>✓ Enrolled</div>
-                      )}
+                  {visibleRequests.length === 0 ? (
+                    <div className={`p-12 rounded-2xl border-2 border-dashed text-center ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'}`}>
+                      <p className="text-3xl mb-2">👨‍🎓</p>
+                      <p className={`font-bold ${textSecondary}`}>No requests</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {visibleRequests.map(r => (
+                        <div key={r._id} className={`p-4 rounded-xl border ${cardBg}`}>
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white ${isDarkMode ? 'bg-teal-500/30' : 'bg-teal-200'}`}>{r.studentId?.fullName?.[0] || '?'}</div>
+                            <div className="flex-1">
+                              <p className={`font-bold ${textPrimary}`}>{r.studentId?.fullName || r.studentId?.username}</p>
+                              <p className={`text-xs ${textSecondary}`}>{r.grade}</p>
+                            </div>
+                            <span className={`text-xs font-bold px-2 py-1 rounded ${r.status === 'pending' ? (isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-700') : (isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700')}`}>
+                              {r.status === 'pending' ? '⏳ Pending' : '✅ Approved'}
+                            </span>
+                          </div>
+                          {r.status === 'pending' ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => handleApprove(r._id)} className={`w-full font-bold py-2 rounded-lg transition text-sm ${isDarkMode ? 'bg-teal-500/20 text-teal-300 hover:bg-teal-500/30' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}>✓ Approve</button>
+                              <button onClick={() => handleDecline(r._id)} className={`w-full font-bold py-2 rounded-lg transition text-sm ${isDarkMode ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'}`}>✕ Decline</button>
+                            </div>
+                          ) : (
+                            <div className={`w-full text-center font-bold py-2 rounded-lg text-sm ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>✓ Enrolled</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  </>
+                );
+              })()}
             </div>
           )}
 

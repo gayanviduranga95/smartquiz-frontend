@@ -550,6 +550,8 @@ export default function StudentDashboard() {
                         </div>
                         {req.status === 'approved' ? (
                           <button onClick={() => handleEnterClass(req)} className={`w-full font-bold px-4 py-3 rounded-xl transition-all duration-300 border ${isDarkMode ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)]' : 'bg-emerald-100 border-emerald-300 text-emerald-700 hover:bg-emerald-200 shadow-md hover:shadow-lg'}`}>Enter Class →</button>
+                        ) : req.status === 'declined' ? (
+                          <span className={`w-full text-center font-bold px-4 py-3 rounded-xl border ${isDarkMode ? 'bg-rose-500/20 border-rose-500/30 text-rose-300' : 'bg-rose-100 border-rose-300 text-rose-700'}`}>✕ Request Declined</span>
                         ) : (
                           <span className={`w-full text-center font-bold px-4 py-3 rounded-xl border ${isDarkMode ? 'bg-amber-500/20 border-amber-500/30 text-amber-300 animate-pulse' : 'bg-amber-100 border-amber-300 text-amber-700'}`}>⏳ Pending Approval</span>
                         )}
