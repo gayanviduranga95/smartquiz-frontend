@@ -274,8 +274,15 @@ export default function Login() {
             <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className={`w-full p-4 border rounded-xl font-medium focus:outline-none transition ${inputBg}`} required />
           </div>
           {isLogin && (
-            <div className="text-right">
-              <Link to="/forgot-password" className={`text-sm font-bold transition ${isDarkMode ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-700'}`}>
+            <div>
+              <Link
+                to="/forgot-password"
+                className={`block w-full py-3 rounded-xl border text-center text-sm font-bold transition ${
+                  isDarkMode
+                    ? 'border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20'
+                    : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
+                }`}
+              >
                 Forgot password?
               </Link>
             </div>
