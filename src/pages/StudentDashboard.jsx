@@ -331,37 +331,6 @@ export default function StudentDashboard() {
         </div>
       )}
       
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -1000px 0; }
-          100% { background-position: 1000px 0; }
-        }
-        @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(20, 184, 166, 0.3); }
-          50% { box-shadow: 0 0 40px rgba(20, 184, 166, 0.6); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes shine {
-          0% { background-position: 200% center; }
-          100% { background-position: -200% center; }
-        }
-        .glass-shine {
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-          background-size: 200% 100%;
-          animation: shine 3s infinite;
-        }
-        .glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
-        .float { animation: float 3s ease-in-out infinite; }
-        .shimmer-effect {
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-          background-size: 1000px 100%;
-          animation: shimmer 2s infinite;
-        }
-      `}</style>
-      
       {/* Theme Toggle Button */}
       <button 
         onClick={() => setIsDarkMode(!isDarkMode)}
@@ -738,7 +707,7 @@ export default function StudentDashboard() {
                   <div className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-teal-500/50 hover:bg-teal-500/10' : 'bg-white/60 border-white/80 hover:border-teal-400 hover:bg-white/80'}`}>
                     <div className="flex items-center justify-between mb-3">
                       <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-300/70' : 'text-teal-600'}`}>Total XP</p>
-                      <span className="text-2xl group-hover:float">⭐</span>
+                      <span className="text-2xl group-hover:animate-float">⭐</span>
                     </div>
                     <p className={`text-3xl font-black ${textPrimary}`}>{totalPoints}</p>
                     <p className={`text-xs mt-2 ${textSecondary}`}>{completedCount} quizzes completed</p>
@@ -748,7 +717,7 @@ export default function StudentDashboard() {
                   <div className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-cyan-500/50 hover:bg-cyan-500/10' : 'bg-white/60 border-white/80 hover:border-cyan-400 hover:bg-white/80'}`}>
                     <div className="flex items-center justify-between mb-3">
                       <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-cyan-300/70' : 'text-cyan-600'}`}>Avg Score</p>
-                      <span className="text-2xl group-hover:float">📊</span>
+                      <span className="text-2xl group-hover:animate-float">📊</span>
                     </div>
                     <p className={`text-3xl font-black ${textPrimary}`}>{avgScore}</p>
                     <p className={`text-xs mt-2 ${textSecondary}`}>Per quiz average</p>
@@ -758,7 +727,7 @@ export default function StudentDashboard() {
                   <div className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-emerald-500/50 hover:bg-emerald-500/10' : 'bg-white/60 border-white/80 hover:border-emerald-400 hover:bg-white/80'}`}>
                     <div className="flex items-center justify-between mb-3">
                       <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-emerald-300/70' : 'text-emerald-600'}`}>Classes</p>
-                      <span className="text-2xl group-hover:float">🎓</span>
+                      <span className="text-2xl group-hover:animate-float">🎓</span>
                     </div>
                     <p className={`text-3xl font-black ${textPrimary}`}>{myRequests.length}</p>
                     <p className={`text-xs mt-2 ${textSecondary}`}>Enrolled courses</p>

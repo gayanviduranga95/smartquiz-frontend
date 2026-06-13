@@ -579,28 +579,42 @@ export default function TeacherDashboard() {
           {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-in fade-in duration-300">
-              <h1 className={`text-4xl font-black mb-2 ${textPrimary}`}>Welcome back! 👋</h1>
-              <p className={`text-lg font-medium mb-8 ${textSecondary}`}>Here's your class overview</p>
               
-              {/* Analytics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {[
-                  { label: 'Total Quizzes', value: analytics.totalQuizzes, icon: '📚', color: 'teal' },
-                  { label: 'Students', value: analytics.totalStudents, icon: '👨‍🎓', color: 'cyan' },
-                  { label: 'Attempts', value: analytics.totalAttempts, icon: '📝', color: 'emerald' },
-                  { label: 'Avg Score', value: `${analytics.averageScore}%`, icon: '⭐', color: 'amber' },
-                  { label: 'Pending', value: analytics.pendingRequests, icon: '🔔', color: analytics.pendingRequests > 0 ? 'red' : 'slate', highlight: analytics.pendingRequests > 0 }
-                ].map((stat, idx) => (
-                  <div key={idx} className={`p-6 rounded-2xl border transition-all duration-300 hover:-translate-y-1 ${cardBg}`}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className={`text-3xl font-black ${stat.highlight ? 'text-red-500' : textPrimary}`}>{stat.value}</p>
-                        <p className={`text-xs font-bold mt-2 ${textSecondary}`}>{stat.label}</p>
-                      </div>
-                      <div className="text-2xl">{stat.icon}</div>
+              {/* DASHBOARD HERO SECTION */}
+              <div className={`rounded-3xl p-8 md:p-12 mb-8 border relative overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-teal-900/30 via-cyan-900/20 to-slate-900/40 border-teal-500/20 shadow-[0_0_50px_rgba(20,184,166,0.15)]' : 'bg-gradient-to-br from-teal-50 via-cyan-50 to-white border-teal-200 shadow-2xl'}`}>
+                {/* Background Shine Effect */}
+                <div className="glass-shine absolute inset-0 rounded-3xl pointer-events-none"></div>
+                
+                <div className="relative z-10">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
+                    <div>
+                      <p className={`text-sm font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-teal-400' : 'text-teal-600'}`}>Instructor Dashboard</p>
+                      <h1 className={`text-4xl md:text-5xl font-black flex items-center gap-3 ${textPrimary}`}>
+                        <span className="text-5xl md:text-6xl">👋</span> Welcome, {username}
+                      </h1>
+                      <p className={`text-lg font-medium mt-2 ${textSecondary}`}>Here's an overview of your active classes and student performance.</p>
                     </div>
                   </div>
-                ))}
+
+                  {/* Analytics Grid inside Hero */}
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {[
+                      { label: 'Total Quizzes', value: analytics.totalQuizzes, icon: '📚', highlightClass: isDarkMode ? 'hover:border-teal-500/50 hover:bg-teal-500/10' : 'hover:border-teal-400 hover:bg-white/80' },
+                      { label: 'Students', value: analytics.totalStudents, icon: '👨‍🎓', highlightClass: isDarkMode ? 'hover:border-cyan-500/50 hover:bg-cyan-500/10' : 'hover:border-cyan-400 hover:bg-white/80' },
+                      { label: 'Attempts', value: analytics.totalAttempts, icon: '📝', highlightClass: isDarkMode ? 'hover:border-emerald-500/50 hover:bg-emerald-500/10' : 'hover:border-emerald-400 hover:bg-white/80' },
+                      { label: 'Avg Score', value: `${analytics.averageScore}%`, icon: '⭐', highlightClass: isDarkMode ? 'hover:border-amber-500/50 hover:bg-amber-500/10' : 'hover:border-amber-400 hover:bg-white/80' },
+                      { label: 'Pending', value: analytics.pendingRequests, icon: '🔔', highlightClass: analytics.pendingRequests > 0 ? (isDarkMode ? 'border-red-500/50 bg-red-500/10' : 'border-red-400 bg-red-50') : (isDarkMode ? 'hover:border-slate-500/50 hover:bg-slate-500/10' : 'hover:border-slate-400 hover:bg-white/80'), highlightText: analytics.pendingRequests > 0 }
+                    ].map((stat, idx) => (
+                      <div key={idx} className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15' : 'bg-white/60 border-white/80'} ${stat.highlightClass}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className={`text-xs font-bold uppercase tracking-widest ${stat.highlightText ? 'text-red-500' : (isDarkMode ? 'text-slate-300/70' : 'text-slate-600')}`}>{stat.label}</p>
+                          <span className="text-2xl group-hover:animate-float">{stat.icon}</span>
+                        </div>
+                        <p className={`text-3xl font-black ${stat.highlightText ? 'text-red-500' : textPrimary}`}>{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Leaderboard & Quick Actions */}
