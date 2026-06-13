@@ -1,5 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Confetti from 'react-confetti';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { API_URL } from '../config';
 import useThemeMode from '../hooks/useThemeMode';
 
@@ -23,7 +25,10 @@ export default function StudentDashboard() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [revealedHints, setRevealedHints] = useState({});
+  const [showConfetti, setShowConfetti] = useState(false);
   
+  // Data State
+  const [isLoading, setIsLoading] = useState(true);
   const [teachers, setTeachers] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [classQuizzes, setClassQuizzes] = useState([]); 
@@ -150,6 +155,7 @@ export default function StudentDashboard() {
     if (!userId) { navigate('/'); return; }
     
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         setDataError('');
         const [teachersRes, requestsRes, scoresRes] = await Promise.all([
@@ -177,6 +183,8 @@ export default function StudentDashboard() {
         setMyRequests([]);
         setMyScores([]);
         setDataError('Dashboard data could not be loaded. Please refresh and try again.');
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -202,6 +210,13 @@ export default function StudentDashboard() {
     let score = 0;
     activeQuiz.questions.forEach((q, index) => { if (selectedAnswers[index] === q.correctAnswer) score += 1; });
     setQuizResult({ score, total: activeQuiz.questions.length });
+    
+    // Trigger confetti if score is >= 80%
+    if ((score / activeQuiz.questions.length) >= 0.8) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000); // Stop confetti after 5 seconds
+    }
+
     try {
       await fetch('https://quiz-platform-tau.vercel.app/api/scores/submit', {
         method: 'POST',
@@ -323,8 +338,15 @@ export default function StudentDashboard() {
   const textSecondary = isDarkMode ? 'text-slate-400' : 'text-slate-500';
   const titleGradient = isDarkMode ? 'from-teal-400 to-cyan-400' : 'from-teal-600 to-cyan-600';
 
+  const chartData = [...myScores].reverse().map((score, index) => ({
+    name: `Q${index + 1}`,
+    score: Math.round((score.score / score.totalQuestions) * 100)
+  }));
+
   return (
     <div className={`min-h-screen flex font-sans relative overflow-hidden transition-colors duration-500 ${themeBg}`}>
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} numberOfPieces={500} />}
+      
       {dataError && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[calc(100%-2rem)] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center font-bold text-red-700 shadow-lg">
           {dataError}
@@ -496,6 +518,13 @@ export default function StudentDashboard() {
                      </div>
                       {q.hint && <div className={`mt-4 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>💡 Hint: {q.hint}</div>}
                       {q.explanation && <div className={`mt-3 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-100' : 'bg-cyan-50 border-cyan-100 text-cyan-900'}`}>🧠 Explanation: {q.explanation}</div>}
+                      {!isCorrect && (
+                        <div className="mt-4 flex justify-end">
+                           <button className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg border transition-all ${isDarkMode ? 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)]' : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 shadow-sm'}`}>
+                             🤖 Explain like I'm 5
+                           </button>
+                        </div>
+                      )}
                    </div>
                  );
                })}
@@ -702,35 +731,56 @@ export default function StudentDashboard() {
                 </div>
 
                 {/* MODERN STAT CARDS */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Total XP Card */}
-                  <div className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-teal-500/50 hover:bg-teal-500/10' : 'bg-white/60 border-white/80 hover:border-teal-400 hover:bg-white/80'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-300/70' : 'text-teal-600'}`}>Total XP</p>
-                      <span className="text-2xl group-hover:animate-float">⭐</span>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                  <div className="lg:col-span-2">
+                    <div className={`p-6 rounded-2xl border transition-all duration-300 h-full ${isDarkMode ? 'bg-white/8 border-white/15' : 'bg-white/60 border-white/80'}`}>
+                      <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${textSecondary}`}>Performance Trend</p>
+                      {chartData.length > 1 ? (
+                        <div className="h-48 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                              <defs>
+                                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={isDarkMode ? '#2dd4bf' : '#0d9488'} stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor={isDarkMode ? '#2dd4bf' : '#0d9488'} stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <Tooltip 
+                                contentStyle={{ backgroundColor: isDarkMode ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                                itemStyle={{ color: isDarkMode ? '#2dd4bf' : '#0d9488', fontWeight: 'bold' }}
+                              />
+                              <Area type="monotone" dataKey="score" stroke={isDarkMode ? '#2dd4bf' : '#0d9488'} strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="h-48 flex items-center justify-center border-2 border-dashed rounded-xl border-slate-300 dark:border-slate-700">
+                          <p className={`text-sm font-medium ${textSecondary}`}>Complete more quizzes to see your trend</p>
+                        </div>
+                      )}
                     </div>
-                    <p className={`text-3xl font-black ${textPrimary}`}>{totalPoints}</p>
-                    <p className={`text-xs mt-2 ${textSecondary}`}>{completedCount} quizzes completed</p>
                   </div>
 
-                  {/* Average Score Card */}
-                  <div className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-cyan-500/50 hover:bg-cyan-500/10' : 'bg-white/60 border-white/80 hover:border-cyan-400 hover:bg-white/80'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-cyan-300/70' : 'text-cyan-600'}`}>Avg Score</p>
-                      <span className="text-2xl group-hover:animate-float">📊</span>
+                  <div className="flex flex-col gap-4">
+                    {/* Average Score Card */}
+                    <div className={`flex-1 p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-cyan-500/50 hover:bg-cyan-500/10' : 'bg-white/60 border-white/80 hover:border-cyan-400 hover:bg-white/80'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-cyan-300/70' : 'text-cyan-600'}`}>Avg Score</p>
+                        <span className="text-2xl group-hover:animate-float">📊</span>
+                      </div>
+                      <p className={`text-3xl font-black ${textPrimary}`}>{avgScore}</p>
+                      <p className={`text-xs mt-2 ${textSecondary}`}>Per quiz average</p>
                     </div>
-                    <p className={`text-3xl font-black ${textPrimary}`}>{avgScore}</p>
-                    <p className={`text-xs mt-2 ${textSecondary}`}>Per quiz average</p>
-                  </div>
 
-                  {/* Active Classes Card */}
-                  <div className={`p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-emerald-500/50 hover:bg-emerald-500/10' : 'bg-white/60 border-white/80 hover:border-emerald-400 hover:bg-white/80'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-emerald-300/70' : 'text-emerald-600'}`}>Classes</p>
-                      <span className="text-2xl group-hover:animate-float">🎓</span>
+                    {/* Active Classes Card */}
+                    <div className={`flex-1 p-6 rounded-2xl border transition-all duration-300 group cursor-pointer ${isDarkMode ? 'bg-white/8 border-white/15 hover:border-emerald-500/50 hover:bg-emerald-500/10' : 'bg-white/60 border-white/80 hover:border-emerald-400 hover:bg-white/80'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-emerald-300/70' : 'text-emerald-600'}`}>Classes</p>
+                        <span className="text-2xl group-hover:animate-float">🎓</span>
+                      </div>
+                      <p className={`text-3xl font-black ${textPrimary}`}>{myRequests.length}</p>
+                      <p className={`text-xs mt-2 ${textSecondary}`}>Enrolled courses</p>
                     </div>
-                    <p className={`text-3xl font-black ${textPrimary}`}>{myRequests.length}</p>
-                    <p className={`text-xs mt-2 ${textSecondary}`}>Enrolled courses</p>
                   </div>
                 </div>
               </div>
@@ -740,14 +790,20 @@ export default function StudentDashboard() {
               <div className="animate-in fade-in duration-300">
                 <h2 className={`text-3xl font-bold mb-2 ${textPrimary}`}>My Enrollments</h2>
                 <p className={`font-medium mb-8 ${textSecondary}`}>Track your class access requests and enter your approved courses.</p>
-                {myRequests.length === 0 ? (
+                {isLoading ? (
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-6">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} animate-pulse h-48`}></div>
+                    ))}
+                  </div>
+                ) : myRequests.length === 0 ? (
                   <div className={`p-16 rounded-3xl border border-dashed text-center transition-all ${isDarkMode ? 'bg-white/5 border-white/20 hover:border-teal-500/50 hover:bg-teal-500/5' : 'bg-slate-100/50 border-slate-300 hover:border-teal-400 hover:bg-teal-50/30'}`}>
                     <p className="text-6xl mb-4">📚</p>
                     <p className={`font-bold text-lg ${textPrimary}`}>No Enrollments Yet</p>
                     <p className={`text-sm ${textSecondary}} mt-2`}>Visit the Course Catalog to request access to classes</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-6">
                     {myRequests.map(req => (
                       <div key={req._id} className={`p-6 rounded-2xl border transition-all duration-300 flex flex-col ${cardBg} hover:shadow-xl ${isDarkMode ? 'hover:border-teal-500/50' : 'hover:border-teal-400'}`}>
                         <div className="flex-1">
@@ -780,7 +836,13 @@ export default function StudentDashboard() {
               <div className="animate-in fade-in duration-300">
                 <h2 className={`text-3xl font-bold mb-2 ${textPrimary}`}>Available Educators</h2>
                 <p className={`font-medium mb-8 ${textSecondary}`}>Browse teachers in your district and request access to their quizzes.</p>
-                {teachers.length === 0 ? (
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <div key={i} className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'} animate-pulse h-48`}></div>
+                    ))}
+                  </div>
+                ) : teachers.length === 0 ? (
                   <div className={`p-16 rounded-3xl border border-dashed text-center transition-all ${isDarkMode ? 'bg-white/5 border-white/20 hover:border-cyan-500/50 hover:bg-cyan-500/5' : 'bg-slate-100/50 border-slate-300 hover:border-cyan-400 hover:bg-cyan-50/30'}`}>
                     <p className="text-6xl mb-4">🔍</p>
                     <p className={`font-bold text-lg ${textPrimary}`}>No Educators Available</p>
