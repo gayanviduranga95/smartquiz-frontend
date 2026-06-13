@@ -376,6 +376,15 @@ export default function StudentDashboard() {
       </button>
 
       <button
+        onClick={handleLogout}
+        className={`absolute top-6 right-[144px] hidden md:flex items-center gap-2 px-4 py-2.5 rounded-full backdrop-blur-md border transition-all z-50 ${isDarkMode ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20' : 'bg-white border-slate-200 hover:bg-red-50 text-red-600 shadow-md'}`}
+        title="Logout"
+      >
+        <span className="text-sm font-black">Logout</span>
+        <span className="text-lg">🚪</span>
+      </button>
+
+      <button
         onClick={() => setShowNotifications(prev => !prev)}
         className={`absolute top-6 right-20 p-3 rounded-full backdrop-blur-md border transition-all z-50 ${isDarkMode ? 'bg-white/10 border-white/20 hover:bg-white/20 text-slate-100' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-md'}`}
         title="Notifications"
