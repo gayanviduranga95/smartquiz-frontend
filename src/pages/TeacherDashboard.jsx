@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
+import useThemeMode from '../hooks/useThemeMode';
 
 export default function TeacherDashboard() {
   const location = useLocation();
@@ -10,7 +11,7 @@ export default function TeacherDashboard() {
   const userId = location.state?.userId; 
 
   // Theme State
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useThemeMode();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   

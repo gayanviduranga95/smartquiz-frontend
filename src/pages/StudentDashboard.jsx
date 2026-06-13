@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_URL } from '../config';
+import useThemeMode from '../hooks/useThemeMode';
 
 export default function StudentDashboard() {
   const location = useLocation();
@@ -10,7 +11,7 @@ export default function StudentDashboard() {
   const userId = location.state?.userId || queryUserId; 
 
   // Theme State
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useThemeMode();
 
   const [activeTab, setActiveTab] = useState('find-teachers');
   const [activeClass, setActiveClass] = useState(null); 
@@ -36,6 +37,25 @@ export default function StudentDashboard() {
   const [requestMessage, setRequestMessage] = useState('');
   const [dataError, setDataError] = useState('');
   const notificationPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+  const seenNotificationIds = useRef(new Set());
+  const notificationsInitialized = useRef(false);
+
+  const showBrowserNotification = (notification) => {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      return;
+    }
+
+    const browserNotification = new Notification(notification.title, {
+      body: notification.message,
+      icon: '/assets/favicon.png',
+      tag: notification._id
+    });
+
+    browserNotification.onclick = () => {
+      window.focus();
+      browserNotification.close();
+    };
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -43,6 +63,18 @@ export default function StudentDashboard() {
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) throw new Error('Failed to fetch notifications');
       setNotifications(data);
+
+      if (notificationsInitialized.current) {
+        data.forEach((notification) => {
+          if (!seenNotificationIds.current.has(notification._id) && !notification.read) {
+            showBrowserNotification(notification);
+          }
+          seenNotificationIds.current.add(notification._id);
+        });
+      } else {
+        data.forEach((notification) => seenNotificationIds.current.add(notification._id));
+        notificationsInitialized.current = true;
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setNotifications([]);
