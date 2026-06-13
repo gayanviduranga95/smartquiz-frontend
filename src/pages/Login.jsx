@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
+import { API_URL } from '../config';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        const response = await fetch('https://quiz-platform-tau.vercel.app/api/auth/login', {
+        const response = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
@@ -132,7 +133,7 @@ export default function Login() {
           formData.append('parentContact', parentContact);
         }
 
-        const response = await fetch('https://quiz-platform-tau.vercel.app/api/auth/register', {
+        const response = await fetch(`${API_URL}/api/auth/register`, {
           method: 'POST',
           body: formData
         });
@@ -272,6 +273,13 @@ export default function Login() {
             <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} className={`w-full p-4 border rounded-xl font-medium focus:outline-none transition ${inputBg}`} required />
             <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className={`w-full p-4 border rounded-xl font-medium focus:outline-none transition ${inputBg}`} required />
           </div>
+          {isLogin && (
+            <div className="text-right">
+              <Link to="/forgot-password" className={`text-sm font-bold transition ${isDarkMode ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-700'}`}>
+                Forgot password?
+              </Link>
+            </div>
+          )}
 
           <button type="submit" disabled={isLoading} className={`w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white py-4 rounded-xl font-black hover:from-teal-400 hover:to-cyan-400 border transition mt-6 disabled:opacity-50 text-lg ${isDarkMode ? 'shadow-[0_0_20px_rgba(20,184,166,0.4)] border-white/20' : 'shadow-lg shadow-teal-500/30 border-transparent'}`}>
             {isLoading ? 'Processing...' : (isLogin ? 'Log In to SmartQuiz' : 'Create Account')}
