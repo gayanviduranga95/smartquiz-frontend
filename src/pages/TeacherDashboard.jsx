@@ -56,6 +56,7 @@ export default function TeacherDashboard() {
   const [profileMessage, setProfileMessage] = useState('');
   const [profilePicFile, setProfilePicFile] = useState(null);
   const [profilePicPreview, setProfilePicPreview] = useState('');
+  const [dataError, setDataError] = useState('');
 
   // Image Crop State
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -115,22 +116,40 @@ export default function TeacherDashboard() {
   const fetchRequests = async () => {
     try {
       const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/teacher-requests/${userId}`);
-      setEnrollmentRequests(await res.json());
-    } catch (error) { console.error(error); }
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to fetch requests');
+      setEnrollmentRequests(data);
+    } catch (error) {
+      console.error(error);
+      setEnrollmentRequests([]);
+      setDataError('Dashboard data could not be loaded. Please refresh and try again.');
+    }
   };
 
   const fetchScores = async () => {
     try {
       const res = await fetch(`https://quiz-platform-tau.vercel.app/api/scores/teacher/${userId}`);
-      setStudentScores(await res.json());
-    } catch (error) { console.error(error); }
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to fetch scores');
+      setStudentScores(data);
+    } catch (error) {
+      console.error(error);
+      setStudentScores([]);
+      setDataError('Dashboard data could not be loaded. Please refresh and try again.');
+    }
   };
 
   const fetchMyQuizzes = async () => {
     try {
       const res = await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/teacher/${userId}`);
-      setMyQuizzes(await res.json());
-    } catch (error) { console.error(error); }
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to fetch quizzes');
+      setMyQuizzes(data);
+    } catch (error) {
+      console.error(error);
+      setMyQuizzes([]);
+      setDataError('Dashboard data could not be loaded. Please refresh and try again.');
+    }
   };
 
   const handleUpdateProfile = async () => {
@@ -274,7 +293,7 @@ export default function TeacherDashboard() {
   });
 
   const filteredStudentScores = studentScores.filter(score => {
-    const matchesSearch = (score.studentId?.fullName || score.studentId?.username).toLowerCase().includes(studentSearchQuery.toLowerCase());
+    const matchesSearch = (score.studentId?.fullName || score.studentId?.username || '').toLowerCase().includes(studentSearchQuery.toLowerCase());
     const percentage = (score.score / score.totalQuestions) * 100;
     let matchesPerformance = true;
     if (studentFilterPerformance === 'Excellent') matchesPerformance = percentage >= 80;
@@ -379,6 +398,11 @@ export default function TeacherDashboard() {
 
   return (
     <div className={`min-h-screen font-sans flex flex-col relative overflow-hidden transition-colors duration-500 ${themeBg}`}>
+      {dataError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[calc(100%-2rem)] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center font-bold text-red-700 shadow-lg">
+          {dataError}
+        </div>
+      )}
       
       {/* Background Glows */}
       <div className={`absolute top-[-15%] left-[-10%] w-[40rem] h-[40rem] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-teal-600/20' : 'bg-teal-300/40'}`}></div>

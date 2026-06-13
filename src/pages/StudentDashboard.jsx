@@ -27,23 +27,39 @@ export default function StudentDashboard() {
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [selectedGrade, setSelectedGrade] = useState('Grade 10');
   const [requestMessage, setRequestMessage] = useState('');
+  const [dataError, setDataError] = useState('');
 
   useEffect(() => {
     if (!userId) { navigate('/'); return; }
     
     const fetchData = async () => {
       try {
+        setDataError('');
         const [teachersRes, requestsRes, scoresRes] = await Promise.all([
           fetch('https://quiz-platform-tau.vercel.app/api/enrollments/available-teachers'),
           fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/my-requests/${userId}`),
           fetch(`https://quiz-platform-tau.vercel.app/api/scores/student/${userId}`)
         ]);
-        
-        setTeachers(await teachersRes.json());
-        setMyRequests(await requestsRes.json());
-        setMyScores(await scoresRes.json());
+
+        const [teachersData, requestsData, scoresData] = await Promise.all([
+          teachersRes.json(),
+          requestsRes.json(),
+          scoresRes.json()
+        ]);
+
+        if (!teachersRes.ok || !requestsRes.ok || !scoresRes.ok) {
+          throw new Error('Some dashboard information could not be loaded.');
+        }
+
+        setTeachers(Array.isArray(teachersData) ? teachersData : []);
+        setMyRequests(Array.isArray(requestsData) ? requestsData : []);
+        setMyScores(Array.isArray(scoresData) ? scoresData : []);
       } catch (error) { 
-        console.error('Error fetching data:', error); 
+        console.error('Error fetching data:', error);
+        setTeachers([]);
+        setMyRequests([]);
+        setMyScores([]);
+        setDataError('Dashboard data could not be loaded. Please refresh and try again.');
       }
     };
     
@@ -153,6 +169,11 @@ export default function StudentDashboard() {
 
   return (
     <div className={`min-h-screen flex font-sans relative overflow-hidden transition-colors duration-500 ${themeBg}`}>
+      {dataError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[calc(100%-2rem)] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center font-bold text-red-700 shadow-lg">
+          {dataError}
+        </div>
+      )}
       
       <style>{`
         @keyframes shimmer {
@@ -562,7 +583,7 @@ export default function StudentDashboard() {
                             {teacher.profilePic ? (
                               <img src={teacher.profilePic} alt={teacher.fullName} className={`w-16 h-16 rounded-full object-cover border-2 shadow-lg transition-transform duration-300 ${isDarkMode ? 'border-teal-500/50' : 'border-teal-400'} group-hover:scale-110`} />
                             ) : (
-                              <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center font-bold text-2xl transition-transform duration-300 group-hover:scale-110 ${isDarkMode ? 'bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border-teal-500/50 text-teal-400' : 'bg-gradient-to-br from-teal-100 to-cyan-100 border-teal-300 text-teal-600'}`}>{teacher.username.charAt(0).toUpperCase()}</div>
+                              <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center font-bold text-2xl transition-transform duration-300 group-hover:scale-110 ${isDarkMode ? 'bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border-teal-500/50 text-teal-400' : 'bg-gradient-to-br from-teal-100 to-cyan-100 border-teal-300 text-teal-600'}`}>{teacher.username?.charAt(0).toUpperCase() || '?'}</div>
                             )}
                             <div className="flex-1">
                               <h3 className={`text-xl font-bold ${textPrimary}`}>{teacher.fullName || teacher.username}</h3>
@@ -574,7 +595,7 @@ export default function StudentDashboard() {
                           {teacher.subjects && (
                             <div className="mb-6">
                               <div className="flex flex-wrap gap-2">
-                                {teacher.subjects.split(',').slice(0, 3).map((subject, i) => (
+                                {teacher.subjects?.split(',').slice(0, 3).map((subject, i) => (
                                   <span key={i} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${isDarkMode ? 'bg-teal-500/20 border border-teal-500/40 text-teal-300 group-hover:bg-teal-500/30 group-hover:border-teal-500/60' : 'bg-teal-100 border border-teal-200 text-teal-700 group-hover:bg-teal-200'}`}>
                                     {subject.trim()}
                                   </span>
