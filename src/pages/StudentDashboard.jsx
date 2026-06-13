@@ -16,7 +16,9 @@ export default function StudentDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('smartquiz-user');
-    navigate('/');
+    sessionStorage.clear(); // Clear session storage too just in case
+    // Force a hard redirect to the home page to ensure all state is cleared
+    window.location.href = '/';
   };
 
   // Theme State

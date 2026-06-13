@@ -14,7 +14,8 @@ export default function TeacherDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('smartquiz-user');
-    navigate('/');
+    sessionStorage.clear();
+    window.location.href = '/';
   };
 
   // Theme State
