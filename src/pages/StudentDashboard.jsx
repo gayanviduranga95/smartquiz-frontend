@@ -1,11 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
+import { API_URL } from '../config';
 
 export default function StudentDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const username = location.state?.username || 'Student';
-  const userId = location.state?.userId; 
+  const queryUserId = new URLSearchParams(location.search).get('studentId');
+  const userId = location.state?.userId || queryUserId; 
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -25,10 +27,92 @@ export default function StudentDashboard() {
   const [myRequests, setMyRequests] = useState([]);
   const [classQuizzes, setClassQuizzes] = useState([]); 
   const [myScores, setMyScores] = useState([]); 
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [pushStatus, setPushStatus] = useState('');
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [selectedGrade, setSelectedGrade] = useState('Grade 10');
   const [requestMessage, setRequestMessage] = useState('');
   const [dataError, setDataError] = useState('');
+  const notificationPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch(`https://quiz-platform-tau.vercel.app/api/notifications/student/${userId}`);
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data)) throw new Error('Failed to fetch notifications');
+      setNotifications(data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotifications([]);
+    }
+  };
+
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+  };
+
+  const enablePushNotifications = async () => {
+    if (!('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window)) {
+      setPushStatus('Browser push notifications are not supported here.');
+      return;
+    }
+
+    if (!userId) {
+      setPushStatus('Sign in first so we can save your notification subscription.');
+      return;
+    }
+
+    try {
+      setIsEnablingPush(true);
+      setPushStatus('');
+
+      const permission = Notification.permission === 'granted'
+        ? 'granted'
+        : await Notification.requestPermission();
+
+      if (permission !== 'granted') {
+        setPushStatus('Notification permission was not granted.');
+        return;
+      }
+
+      const configResponse = await fetch(`${API_URL}/api/push/config`);
+      const config = await configResponse.json();
+
+      if (!configResponse.ok || !config.enabled || !config.publicKey) {
+        setPushStatus('Push is not configured on the server yet.');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      const existingSubscription = await registration.pushManager.getSubscription();
+      const subscription = existingSubscription || await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey)
+      });
+
+      const saveResponse = await fetch(`${API_URL}/api/push/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: userId, subscription: subscription.toJSON() })
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save subscription');
+      }
+
+      setPushStatus('Browser notifications enabled. You will now receive alerts even when the site is closed.');
+    } catch (error) {
+      console.error('Error enabling push notifications:', error);
+      setPushStatus('Could not enable browser notifications.');
+    } finally {
+      setIsEnablingPush(false);
+    }
+  };
 
   useEffect(() => {
     if (!userId) { navigate('/'); return; }
@@ -65,11 +149,19 @@ export default function StudentDashboard() {
     };
     
     fetchData();
+    fetchNotifications();
   }, [userId, navigate]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const intervalId = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(intervalId);
+  }, [userId]);
 
   const totalPoints = myScores.reduce((sum, current) => sum + current.score, 0);
   const completedCount = myScores.length;
   const avgScore = completedCount > 0 ? (totalPoints / completedCount).toFixed(1) : 0;
+  const unreadNotifications = notifications.filter(notification => !notification.read).length;
 
   const handleSelectAnswer = (questionIndex, option) => setSelectedAnswers({ ...selectedAnswers, [questionIndex]: option });
 
@@ -146,6 +238,24 @@ export default function StudentDashboard() {
 
   const toggleHint = (questionIndex) => {
     setRevealedHints(prev => ({ ...prev, [questionIndex]: !prev[questionIndex] }));
+  };
+
+  const markNotificationRead = async (notificationId) => {
+    try {
+      await fetch(`https://quiz-platform-tau.vercel.app/api/notifications/${notificationId}/read`, { method: 'PUT' });
+      setNotifications(prev => prev.map(notification => notification._id === notificationId ? { ...notification, read: true } : notification));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      await fetch(`https://quiz-platform-tau.vercel.app/api/notifications/student/${userId}/read-all`, { method: 'PUT' });
+      setNotifications(prev => prev.map(notification => ({ ...notification, read: true })));
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
   };
 
   const handleEnterClass = async (enrollment) => {
@@ -232,6 +342,64 @@ export default function StudentDashboard() {
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
         )}
       </button>
+
+      <button
+        onClick={() => setShowNotifications(prev => !prev)}
+        className={`absolute top-6 right-20 p-3 rounded-full backdrop-blur-md border transition-all z-50 ${isDarkMode ? 'bg-white/10 border-white/20 hover:bg-white/20 text-slate-100' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-md'}`}
+        title="Notifications"
+      >
+        🔔
+        {unreadNotifications > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+            {unreadNotifications}
+          </span>
+        )}
+      </button>
+
+      {showNotifications && (
+        <div className={`fixed top-20 right-6 z-50 w-[min(92vw,22rem)] rounded-3xl border shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+          <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
+            <p className={`font-black ${textPrimary}`}>Notifications</p>
+            <div className="flex items-center gap-2">
+              {unreadNotifications > 0 && (
+                <button onClick={markAllNotificationsRead} className={`text-xs font-bold ${isDarkMode ? 'text-teal-300' : 'text-teal-600'}`}>Mark all read</button>
+              )}
+              <button onClick={() => setShowNotifications(false)} className={`text-xs font-bold ${textSecondary}`}>Close</button>
+            </div>
+          </div>
+          <div className={`px-4 py-3 border-b ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+            <button
+              onClick={enablePushNotifications}
+              disabled={isEnablingPush}
+              className={`w-full rounded-xl px-4 py-3 text-sm font-black transition border ${isDarkMode ? 'bg-teal-500/10 border-teal-500/20 text-teal-200 hover:bg-teal-500/20' : 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100'} disabled:opacity-60`}
+            >
+              {notificationPermission === 'granted' ? '✅ Browser alerts enabled' : isEnablingPush ? 'Enabling...' : '🔔 Enable browser alerts'}
+            </button>
+            {pushStatus && <p className={`mt-2 text-xs ${textSecondary}`}>{pushStatus}</p>}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className={`p-6 text-center text-sm ${textSecondary}`}>No notifications yet.</div>
+            ) : notifications.map(notification => (
+              <button
+                key={notification._id}
+                onClick={() => markNotificationRead(notification._id)}
+                className={`w-full text-left px-4 py-3 border-b transition ${notification.read ? (isDarkMode ? 'bg-transparent border-white/5 hover:bg-white/5' : 'bg-white border-slate-100 hover:bg-slate-50') : (isDarkMode ? 'bg-teal-500/10 border-white/5 hover:bg-teal-500/15' : 'bg-teal-50 border-slate-100 hover:bg-teal-100')}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 text-lg">{notification.type === 'quiz-published' ? '📝' : notification.type === 'enrollment-approved' ? '✅' : notification.type === 'enrollment-declined' ? '⚠️' : '🔔'}</span>
+                  <div className="flex-1">
+                    <p className={`font-bold ${textPrimary}`}>{notification.title}</p>
+                    <p className={`text-sm ${textSecondary}`}>{notification.message}</p>
+                    <p className="text-[11px] mt-1 text-slate-400">{new Date(notification.createdAt).toLocaleString()}</p>
+                  </div>
+                  {!notification.read && <span className="mt-1 w-2.5 h-2.5 rounded-full bg-teal-500"></span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* CINEMATIC BOKEH BACKGROUND GLOWS */}
       <div className={`absolute top-[-15%] left-[-10%] w-[40rem] h-[40rem] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-teal-600/20' : 'bg-teal-300/40'}`}></div>
