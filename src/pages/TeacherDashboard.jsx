@@ -341,6 +341,35 @@ export default function TeacherDashboard() {
     return matchesSearch && matchesPerformance;
   });
 
+  // --- UPGRADE 1: Frontend File Size Validation ---
+  const handleFileSelection = (file) => {
+    if (!file) return;
+    
+    // 10MB limit check (matches backend)
+    if (file.size > 10 * 1024 * 1024) {
+      setAiError('File is too large. Please upload a file smaller than 10MB.');
+      setSelectedFile(null);
+      return;
+    }
+    
+    setAiError('');
+    setSelectedFile(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelection(files[0]);
+    }
+  };
+
   const handleGenerateQuiz = async () => {
     if (!selectedFile) return;
     setIsGenerating(true); setAiError(''); setSaveMessage('');
@@ -368,27 +397,28 @@ export default function TeacherDashboard() {
         throw new Error((data.message || 'Failed to generate questions') + errorDetail);
       }
       
-      setDraftQuestions([...draftQuestions, ...data]);
+      // --- UPGRADE 2: AI Response Sanitization (The "Rule of 4") ---
+      const sanitizedData = data.map(q => {
+        // Pad with empty strings if less than 4, slice if more than 4 options generated
+        const safeOptions = [...(q.options || []), '', '', '', ''].slice(0, 4);
+        return {
+          ...q,
+          options: safeOptions,
+          // Ensure all required fields exist to prevent undefined errors in UI
+          questionText: q.questionText || '',
+          correctAnswer: q.correctAnswer || '',
+          hint: q.hint || '',
+          explanation: q.explanation || ''
+        };
+      });
+
+      setDraftQuestions([...draftQuestions, ...sanitizedData]);
       setSaveMessage('✅ Questions generated! Review and publish below.');
     } catch (error) { 
       console.error('Generation Error:', error);
       setAiError(error.message); 
     } 
     finally { setIsGenerating(false); }
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      setSelectedFile(files[0]);
-    }
   };
 
   const handleAddManualQuestion = () => {
@@ -756,31 +786,32 @@ export default function TeacherDashboard() {
             <div className="animate-in fade-in duration-300 space-y-6">
               <h1 className={`text-3xl font-black ${textPrimary}`}>🪄 Create Quiz</h1>
               
+              {/* --- UPGRADE 3: Added disabled={isGenerating} to all relevant inputs below --- */}
               <div className={`p-6 rounded-2xl border ${cardBg}`}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div>
                     <label className={`text-xs font-bold mb-2 block ${textSecondary}`}>Title</label>
-                    <input type="text" placeholder="Quiz name" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`} />
+                    <input type="text" disabled={isGenerating} placeholder="Quiz name" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none disabled:opacity-50 ${inputBg}`} />
                   </div>
                   <div>
                     <label className={`text-xs font-bold mb-2 block ${textSecondary}`}>Grade</label>
-                    <select value={quizGrade} onChange={(e) => setQuizGrade(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`}>
+                    <select disabled={isGenerating} value={quizGrade} onChange={(e) => setQuizGrade(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none disabled:opacity-50 ${inputBg}`}>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => <option key={n} value={`Grade ${n}`}>Grade {n}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className={`text-xs font-bold mb-2 block ${textSecondary}`}>Age Group</label>
-                    <select value={quizAgeGroup} onChange={(e) => setQuizAgeGroup(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`}>
+                    <select disabled={isGenerating} value={quizAgeGroup} onChange={(e) => setQuizAgeGroup(e.target.value)} className={`w-full p-3 border rounded-lg focus:outline-none disabled:opacity-50 ${inputBg}`}>
                       {ageGroupOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </div>
                   <div className="flex items-center gap-3 self-end pb-2">
-                    <input id="image-only" type="checkbox" checked={quizImageOnly} onChange={(e) => setQuizImageOnly(e.target.checked)} />
-                    <label htmlFor="image-only" className={`text-sm font-bold ${textSecondary}`}>Image-only quiz</label>
+                    <input disabled={isGenerating} id="image-only" type="checkbox" checked={quizImageOnly} onChange={(e) => setQuizImageOnly(e.target.checked)} className="disabled:opacity-50" />
+                    <label htmlFor="image-only" className={`text-sm font-bold ${isGenerating ? 'opacity-50' : ''} ${textSecondary}`}>Image-only quiz</label>
                   </div>
                   <div>
                     <label className={`text-xs font-bold mb-2 block ${textSecondary}`}>Time (min)</label>
-                    <input type="number" min="0" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(Number(e.target.value))} className={`w-full p-3 border rounded-lg focus:outline-none ${inputBg}`} />
+                    <input disabled={isGenerating} type="number" min="0" value={quizTimeLimit} onChange={(e) => setQuizTimeLimit(Number(e.target.value))} className={`w-full p-3 border rounded-lg focus:outline-none disabled:opacity-50 ${inputBg}`} />
                   </div>
                 </div>
 
@@ -790,16 +821,16 @@ export default function TeacherDashboard() {
 
                 {/* PDF / Image Upload */}
                 <div 
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  className={`p-8 rounded-2xl border-2 border-dashed text-center cursor-pointer transition mb-4 ${
+                  onDragOver={!isGenerating ? handleDragOver : undefined}
+                  onDrop={!isGenerating ? handleDrop : undefined}
+                  className={`p-8 rounded-2xl border-2 border-dashed text-center transition mb-4 ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
                     selectedFile
                       ? isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-50 border-emerald-300'
                       : isDarkMode ? 'bg-teal-500/10 border-teal-500/30' : 'bg-teal-50 border-teal-300'
                   }`}
                 >
-                  <input type="file" id="media" accept=".pdf,image/*" onChange={(e) => setSelectedFile(e.target.files?.[0])} className="hidden" />
-                  <label htmlFor="media" className="cursor-pointer block">
+                  <input disabled={isGenerating} type="file" id="media" accept=".pdf,image/*" onChange={(e) => handleFileSelection(e.target.files?.[0])} className="hidden" />
+                  <label htmlFor="media" className={isGenerating ? "cursor-not-allowed block" : "cursor-pointer block"}>
                     <p className="text-3xl mb-2">{selectedFile ? '✅' : '📄🖼️'}</p>
                     <p className="font-bold">{selectedFile ? selectedFile.name : 'Drop PDF or Image / Click'}</p>
                   </label>
@@ -807,7 +838,7 @@ export default function TeacherDashboard() {
 
                 {/* AI Generate */}
                 <div className="flex gap-3 mb-4">
-                  <input type="number" min="1" max="20" value={numQuestions} onChange={(e) => setNumQuestions(e.target.value)} placeholder="# Questions" className={`w-24 p-3 border rounded-lg focus:outline-none ${inputBg}`} />
+                  <input disabled={isGenerating} type="number" min="1" max="20" value={numQuestions} onChange={(e) => setNumQuestions(e.target.value)} placeholder="# Questions" className={`w-24 p-3 border rounded-lg focus:outline-none disabled:opacity-50 ${inputBg}`} />
                   <button onClick={handleGenerateQuiz} disabled={!selectedFile || isGenerating} className={`flex-1 font-bold py-3 rounded-lg transition ${
                     !selectedFile || isGenerating
                       ? isDarkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-300 text-slate-500'
