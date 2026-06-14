@@ -650,7 +650,7 @@ export default function StudentDashboard() {
             <button onClick={() => setActiveClass(null)} className={`font-bold flex items-center gap-2 mb-6 transition ${isDarkMode ? 'text-slate-400 hover:text-teal-400' : 'text-slate-500 hover:text-teal-600'}`}>← Back to Dashboard</button>
             <div className={`p-8 rounded-3xl text-white mb-8 border ${isDarkMode ? 'bg-gradient-to-r from-teal-600 to-cyan-700 shadow-[0_0_30px_rgba(20,184,166,0.2)] border-white/10' : 'bg-gradient-to-r from-teal-500 to-cyan-600 shadow-lg border-transparent'}`}>
               <h2 className="text-3xl font-black">{activeClass.grade} Modules</h2>
-              <p className="text-teal-100 font-medium mt-1">Instructor: {activeClass.teacherId.fullName || activeClass.teacherId.username}</p>
+              <p className="text-teal-100 font-medium mt-1">Instructor: {activeClass.teacherId?.fullName || activeClass.teacherId?.username}</p>
             </div>
             
             <h3 className={`text-xl font-bold mb-4 border-b pb-2 ${isDarkMode ? 'text-white border-white/10' : 'text-slate-800 border-slate-200'}`}>Assignments to Complete</h3>
@@ -968,3 +968,4 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
