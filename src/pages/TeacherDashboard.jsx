@@ -33,9 +33,10 @@ export default function TeacherDashboard() {
   
   const teacherTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'quizzes', label: 'My Quizzes', icon: '📝' },
-    { id: 'students', label: 'Students', icon: '👨‍🎓' },
-    { id: 'create', label: 'Quiz Builder', icon: '✨' },
+    { id: 'manage-quizzes', label: 'My Quizzes', icon: '📝' },
+    { id: 'quiz-builder', label: 'Quiz Builder', icon: '✨' },
+    { id: 'student-scores', label: 'Results', icon: '📈' },
+    { id: 'student-requests', label: 'Roster', icon: '👨‍🎓' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
@@ -348,17 +349,28 @@ export default function TeacherDashboard() {
     formData.append('numQuestions', numQuestions);
     formData.append('ageGroup', quizAgeGroup);
     formData.append('imageOnly', quizImageOnly ? 'true' : 'false');
+    
     try {
       const response = await fetch(`${API_URL}/api/ai/generate`, { method: 'POST', body: formData });
+      
+      // If the response is HTML (often happens when Vercel errors or URLs are wrong), json() will fail
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(`Server returned non-JSON response (${response.status}). Is API_URL correct?`);
+      }
+
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to generate questions.');
+        // Show specific error if provided by backend, otherwise generic message
+        const errorDetail = data.error ? `: ${data.error}` : (data.details ? `: ${data.details}` : '');
+        throw new Error((data.message || 'Failed to generate questions') + errorDetail);
       }
       
       setDraftQuestions([...draftQuestions, ...data]);
       setSaveMessage('✅ Questions generated! Review and publish below.');
     } catch (error) { 
+      console.error('Generation Error:', error);
       setAiError(error.message); 
     } 
     finally { setIsGenerating(false); }
