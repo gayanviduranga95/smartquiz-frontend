@@ -29,14 +29,13 @@ export default function StudentDashboard() {
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useThemeMode();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('my-classes');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const studentTabs = [
+    { id: 'my-classes', label: 'My Classes', icon: '📚' },
+    { id: 'find-teachers', label: 'Course Catalog', icon: '🔍' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'quizzes', label: 'My Quizzes', icon: '📝' },
-    { id: 'teachers', label: 'Find Teachers', icon: '🔍' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
