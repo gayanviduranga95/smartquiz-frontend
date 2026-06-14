@@ -35,6 +35,8 @@ export default function StudentDashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [revealedHints, setRevealedHints] = useState({});
   const [showConfetti, setShowConfetti] = useState(false);
+  const [aiExplanations, setAiExplanations] = useState({}); 
+  const [isExplaining, setIsExplaining] = useState({}); 
   
   // Data State
   const [isLoading, setIsLoading] = useState(true);
@@ -296,6 +298,25 @@ export default function StudentDashboard() {
     setRevealedHints(prev => ({ ...prev, [questionIndex]: !prev[questionIndex] }));
   };
 
+  const handleExplainLikeIm5 = async (questionIndex, questionText, correctAnswer, context) => {
+    setIsExplaining(prev => ({ ...prev, [questionIndex]: true }));
+    try {
+      const response = await fetch(`${API_URL}/api/ai/explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: questionText, answer: correctAnswer, context })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setAiExplanations(prev => ({ ...prev, [questionIndex]: data.explanation }));
+      }
+    } catch (error) {
+      console.error('Error getting AI explanation:', error);
+    } finally {
+      setIsExplaining(prev => ({ ...prev, [questionIndex]: false }));
+    }
+  };
+
   const markNotificationRead = async (notificationId) => {
     try {
       await fetch(`${API_URL}/api/notifications/${notificationId}/read`, { method: 'PUT' });
@@ -537,10 +558,23 @@ export default function StudentDashboard() {
                       {q.hint && <div className={`mt-4 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>💡 Hint: {q.hint}</div>}
                       {q.explanation && <div className={`mt-3 p-4 rounded-xl border text-sm ${isDarkMode ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-100' : 'bg-cyan-50 border-cyan-100 text-cyan-900'}`}>🧠 Explanation: {q.explanation}</div>}
                       {!isCorrect && (
-                        <div className="mt-4 flex justify-end">
-                           <button className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg border transition-all ${isDarkMode ? 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)]' : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 shadow-sm'}`}>
-                             🤖 Explain like I'm 5
-                           </button>
+                        <div className="mt-4 flex flex-col gap-4">
+                           <div className="flex justify-end">
+                             <button 
+                               onClick={() => handleExplainLikeIm5(qIndex, q.questionText, q.correctAnswer, q.explanation)}
+                               disabled={isExplaining[qIndex]}
+                               className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg border transition-all ${isDarkMode ? 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)]' : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 shadow-sm'} disabled:opacity-50`}
+                             >
+                               {isExplaining[qIndex] ? '🤖 Thinking...' : '🤖 Explain like I\'m 5'}
+                             </button>
+                           </div>
+                           
+                           {aiExplanations[qIndex] && (
+                             <div className={`p-6 rounded-2xl border animate-in slide-in-from-top-2 duration-300 ${isDarkMode ? 'bg-purple-500/10 border-purple-500/20 text-purple-100' : 'bg-purple-50 border-purple-100 text-purple-900'}`}>
+                               <p className="text-xs font-black uppercase tracking-widest mb-2 opacity-70">👶 Simplified Explanation</p>
+                               <p className="text-lg leading-relaxed italic">"{aiExplanations[qIndex]}"</p>
+                             </div>
+                           )}
                         </div>
                       )}
                    </div>
