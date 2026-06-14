@@ -332,7 +332,7 @@ export default function TeacherDashboard() {
     formData.append('ageGroup', quizAgeGroup);
     formData.append('imageOnly', quizImageOnly ? 'true' : 'false');
     try {
-      const response = await fetch(`${API_URL}/api/ai/generate', { method: 'POST', body: formData });
+      const response = await fetch(`${API_URL}/api/ai/generate`, { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Failed to generate questions.');
       const aiQuestions = await response.json();
       setDraftQuestions([...draftQuestions, ...aiQuestions]);
