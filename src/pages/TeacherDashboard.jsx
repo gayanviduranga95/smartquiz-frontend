@@ -620,7 +620,7 @@ export default function TeacherDashboard() {
                       <p className={`text-center py-6 ${textSecondary}`}>No data yet</p>
                     )}
                   </div>
-                </div>
+                </Card>
 
                 {/* Quick Actions */}
                 <div className={`p-6 rounded-2xl border ${cardBg}`}>
