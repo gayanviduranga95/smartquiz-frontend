@@ -73,7 +73,7 @@ export default function StudentDashboard() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`https://quiz-platform-tau.vercel.app/api/notifications/student/${userId}`);
+      const response = await fetch(`${API_URL}/api/notifications/student/${userId}`);
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) throw new Error('Failed to fetch notifications');
       setNotifications(data);
@@ -168,9 +168,9 @@ export default function StudentDashboard() {
       try {
         setDataError('');
         const [teachersRes, requestsRes, scoresRes] = await Promise.all([
-          fetch('https://quiz-platform-tau.vercel.app/api/enrollments/available-teachers'),
-          fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/my-requests/${userId}`),
-          fetch(`https://quiz-platform-tau.vercel.app/api/scores/student/${userId}`)
+          fetch(`${API_URL}/api/enrollments/available-teachers`),
+          fetch(`${API_URL}/api/enrollments/my-requests/${userId}`),
+          fetch(`${API_URL}/api/scores/student/${userId}`)
         ]);
 
         const [teachersData, requestsData, scoresData] = await Promise.all([
@@ -227,13 +227,13 @@ export default function StudentDashboard() {
     }
 
     try {
-      await fetch('https://quiz-platform-tau.vercel.app/api/scores/submit', {
+      await fetch(`${API_URL}/api/scores/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId: userId, quizId: activeQuiz._id, score, totalQuestions: activeQuiz.questions.length, studentAnswers: selectedAnswers })
       });
       // Refetch scores after submission
-      const scoresRes = await fetch(`https://quiz-platform-tau.vercel.app/api/scores/student/${userId}`);
+      const scoresRes = await fetch(`${API_URL}/api/scores/student/${userId}`);
       setMyScores(await scoresRes.json());
     } catch (error) { 
       console.error('Error submitting quiz:', error); 
@@ -268,7 +268,7 @@ export default function StudentDashboard() {
   const handleRequestAccess = async () => {
     setRequestMessage('Sending request...');
     try {
-      const response = await fetch('https://quiz-platform-tau.vercel.app/api/enrollments/request', {
+      const response = await fetch(`${API_URL}/api/enrollments/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId: userId, teacherId: selectedTeacher._id, grade: selectedGrade })
@@ -276,7 +276,7 @@ export default function StudentDashboard() {
       const data = await response.json();
       setRequestMessage(data.message);
       if (response.ok) {
-        const reqRes = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/my-requests/${userId}`);
+        const reqRes = await fetch(`${API_URL}/api/enrollments/my-requests/${userId}`);
         setMyRequests(await reqRes.json());
         setTimeout(() => setSelectedTeacher(null), 2000);
       }
@@ -298,7 +298,7 @@ export default function StudentDashboard() {
 
   const markNotificationRead = async (notificationId) => {
     try {
-      await fetch(`https://quiz-platform-tau.vercel.app/api/notifications/${notificationId}/read`, { method: 'PUT' });
+      await fetch(`${API_URL}/api/notifications/${notificationId}/read`, { method: 'PUT' });
       setNotifications(prev => prev.map(notification => notification._id === notificationId ? { ...notification, read: true } : notification));
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -307,7 +307,7 @@ export default function StudentDashboard() {
 
   const markAllNotificationsRead = async () => {
     try {
-      await fetch(`https://quiz-platform-tau.vercel.app/api/notifications/student/${userId}/read-all`, { method: 'PUT' });
+      await fetch(`${API_URL}/api/notifications/student/${userId}/read-all`, { method: 'PUT' });
       setNotifications(prev => prev.map(notification => ({ ...notification, read: true })));
     } catch (error) {
       console.error('Error marking notifications as read:', error);
@@ -319,7 +319,7 @@ export default function StudentDashboard() {
     setActiveQuiz(null); 
     setReviewQuiz(null);
     try {
-      const response = await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/class?teacherId=${enrollment.teacherId._id}&grade=${enrollment.grade}`);
+      const response = await fetch(`${API_URL}/api/quizzes/class?teacherId=${enrollment.teacherId._id}&grade=${enrollment.grade}`);
       setClassQuizzes(await response.json());
     } catch (_error) { 
       console.error('Error fetching quizzes:', _error); 

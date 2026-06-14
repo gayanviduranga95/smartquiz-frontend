@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import useThemeMode from '../hooks/useThemeMode';
+import { API_URL } from '../config';
 
 export default function TeacherDashboard() {
   const location = useLocation();
@@ -126,7 +127,7 @@ export default function TeacherDashboard() {
   // API Calls
   const fetchRequests = async () => {
     try {
-      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/teacher-requests/${userId}`);
+      const res = await fetch(`${API_URL}/api/enrollments/teacher-requests/${userId}`);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to fetch requests');
       setEnrollmentRequests(data);
@@ -139,7 +140,7 @@ export default function TeacherDashboard() {
 
   const fetchScores = async () => {
     try {
-      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/scores/teacher/${userId}`);
+      const res = await fetch(`${API_URL}/api/scores/teacher/${userId}`);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to fetch scores');
       setStudentScores(data);
@@ -152,7 +153,7 @@ export default function TeacherDashboard() {
 
   const fetchMyQuizzes = async () => {
     try {
-      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/teacher/${userId}`);
+      const res = await fetch(`${API_URL}/api/quizzes/teacher/${userId}`);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data)) throw new Error(data.message || 'Failed to fetch quizzes');
       setMyQuizzes(data);
@@ -176,7 +177,7 @@ export default function TeacherDashboard() {
         formData.append('profilePic', profilePicFile);
       }
 
-      const response = await fetch(`https://quiz-platform-tau.vercel.app/api/auth/profile/${userId}`, {
+      const response = await fetch(`${API_URL}/api/auth/profile/${userId}`, {
         method: 'PUT',
         body: formData
       });
@@ -250,28 +251,28 @@ export default function TeacherDashboard() {
   const handleDeleteQuiz = async (quizId) => {
     if (!window.confirm("Delete this quiz? Students will lose access.")) return;
     try {
-      await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/${quizId}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/api/quizzes/${quizId}`, { method: 'DELETE' });
       fetchMyQuizzes(); 
     } catch (error) { console.error(error); }
   };
 
   const handleApprove = async (enrollmentId) => {
     try {
-      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/approve/${enrollmentId}`, { method: 'PUT' });
+      const res = await fetch(`${API_URL}/api/enrollments/approve/${enrollmentId}`, { method: 'PUT' });
       if (res.ok) fetchRequests();
     } catch (error) { console.error(error); }
   };
 
   const handleDecline = async (enrollmentId) => {
     try {
-      const res = await fetch(`https://quiz-platform-tau.vercel.app/api/enrollments/decline/${enrollmentId}`, { method: 'PUT' });
+      const res = await fetch(`${API_URL}/api/enrollments/decline/${enrollmentId}`, { method: 'PUT' });
       if (res.ok) fetchRequests();
     } catch (error) { console.error(error); }
   };
 
   const handleSaveEdit = async () => {
     try {
-      await fetch(`https://quiz-platform-tau.vercel.app/api/quizzes/${editingQuiz._id}`, {
+      await fetch(`${API_URL}/api/quizzes/${editingQuiz._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -331,7 +332,7 @@ export default function TeacherDashboard() {
     formData.append('ageGroup', quizAgeGroup);
     formData.append('imageOnly', quizImageOnly ? 'true' : 'false');
     try {
-      const response = await fetch('https://quiz-platform-tau.vercel.app/api/ai/generate', { method: 'POST', body: formData });
+      const response = await fetch(`${API_URL}/api/ai/generate', { method: 'POST', body: formData });
       if (!response.ok) throw new Error('Failed to generate questions.');
       const aiQuestions = await response.json();
       setDraftQuestions([...draftQuestions, ...aiQuestions]);
@@ -386,10 +387,25 @@ export default function TeacherDashboard() {
   };
 
   const handleSaveQuiz = async () => {
-    if (!quizTitle || draftQuestions.length === 0) return;
+    if (!quizTitle) {
+      setSaveMessage('❌ Please enter a quiz title');
+      return;
+    }
+    if (draftQuestions.length === 0) {
+      setSaveMessage('❌ Please add at least one question');
+      return;
+    }
+    
+    // Final validation check for all questions
+    const incompleteQuestion = draftQuestions.find(q => !q.questionText || !q.correctAnswer || q.options.some(o => !o));
+    if (incompleteQuestion) {
+      setSaveMessage('❌ All questions must have text, options, and a correct answer selected');
+      return;
+    }
+
     setIsSaving(true); setSaveMessage('Saving...');
     try {
-      const response = await fetch('https://quiz-platform-tau.vercel.app/api/quizzes/save', {
+      const response = await fetch(`${API_URL}/api/quizzes/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -502,7 +518,7 @@ export default function TeacherDashboard() {
               <button 
                 onClick={() => {
                   // Fetch current profile data when opening modal
-                  fetch(`https://quiz-platform-tau.vercel.app/api/auth/profile/${userId}`)
+                  fetch(`${API_URL}/api/auth/profile/${userId}`)
                     .then(res => res.json())
                     .then(data => {
                       if (data.user) {
