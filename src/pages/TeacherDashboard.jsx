@@ -4,6 +4,13 @@ import Cropper from 'react-easy-crop';
 import useThemeMode from '../hooks/useThemeMode';
 import { API_URL } from '../config';
 
+// Shared Components
+import Button from '../components/Button';
+import Card from '../components/Card';
+import Modal from '../components/Modal';
+import Input from '../components/Input';
+import Sidebar from '../components/Sidebar';
+
 export default function TeacherDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,6 +30,16 @@ export default function TeacherDashboard() {
   const [isDarkMode, setIsDarkMode] = useThemeMode();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const teacherTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'quizzes', label: 'My Quizzes', icon: '📝' },
+    { id: 'students', label: 'Students', icon: '👨‍🎓' },
+    { id: 'create', label: 'Quiz Builder', icon: '✨' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
+  ];
+
+  const user = { username, role: 'teacher' };
   
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -455,7 +472,7 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <div className={`min-h-screen font-sans flex flex-col relative overflow-hidden transition-colors duration-500 ${themeBg}`}>
+    <div className={`min-h-screen flex font-sans relative overflow-hidden transition-colors duration-500 ${themeBg}`}>
       {dataError && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[calc(100%-2rem)] rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center font-bold text-red-700 shadow-lg">
           {dataError}
@@ -466,58 +483,46 @@ export default function TeacherDashboard() {
       <div className={`absolute top-[-15%] left-[-10%] w-[40rem] h-[40rem] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-teal-600/20' : 'bg-teal-300/40'}`}></div>
       <div className={`absolute bottom-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`}></div>
 
-      {/* Clean Navbar */}
-      <nav className={`${navBg} border-b sticky top-0 z-50 backdrop-blur-2xl transition-colors duration-500`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            
-            {/* Logo & Branding */}
-            <div 
-              className="flex items-center gap-3 cursor-pointer group"
-              onClick={() => { setActiveTab('dashboard'); }}
-              role="button"
-              tabIndex="0"
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveTab('dashboard'); }}
-              title="Go to Dashboard"
-            >
-              {profileData.profilePic ? (
-                <img 
-                  src={profileData.profilePic} 
-                  alt="Profile" 
-                  className="h-10 w-10 rounded-full object-cover transition-transform duration-300 group-hover:scale-105 flex-shrink-0 border-2 border-teal-500" 
-                />
-              ) : (
-                <img 
-                  src="/assets/logo.png" 
-                  alt="SmartQuiz Logo" 
-                  className="h-10 object-contain transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
-                  loading="lazy"
-                />
-              )}
-              <div className="hidden sm:block">
-                <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r ${titleGradient}`}>SmartQuiz</h1>
-                <p className={`text-xs font-bold ${textSecondary}`}>Educator</p>
+      <Sidebar 
+        isDarkMode={isDarkMode} 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        tabs={teacherTabs} 
+        user={user} 
+        onLogout={handleLogout} 
+      />
+
+      <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
+        {/* Top Header Actions */}
+        <header className={`p-6 border-b flex items-center justify-between backdrop-blur-md ${navBg}`}>
+          <div className="flex items-center gap-4">
+             <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`lg:hidden p-3 rounded-2xl transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}
+              >
+                {isMobileMenuOpen ? '✕' : '☰'}
+              </button>
+              <div>
+                <h2 className={`text-xl font-black ${textPrimary}`}>
+                  {teacherTabs.find(t => t.id === activeTab)?.label}
+                </h2>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${textSecondary}`}>Instructor Portal</p>
               </div>
-            </div>
-
-            {/* Center: User Info */}
-            <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-teal-500/10 border-teal-500/20 text-teal-300' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>
-              <span className="text-lg">👨‍🏫</span>
-              <span className="font-bold text-sm">{username}</span>
-            </div>
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-3">
-              <button 
+          </div>
+          
+          <div className="flex items-center gap-3">
+             <Button 
+                variant="ghost" 
+                size="sm" 
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`p-2 rounded-lg transition ${isDarkMode ? 'hover:bg-white/10 text-yellow-300' : 'hover:bg-slate-100 text-slate-700'}`}
-                title="Toggle Theme"
+                className="rounded-full w-10 h-10 p-0"
               >
                 {isDarkMode ? '☀️' : '🌙'}
-              </button>
-              <button 
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
                 onClick={() => {
-                  // Fetch current profile data when opening modal
                   fetch(`${API_URL}/api/auth/profile/${userId}`)
                     .then(res => res.json())
                     .then(data => {
@@ -534,71 +539,16 @@ export default function TeacherDashboard() {
                     .catch(err => console.error('Failed to fetch profile:', err));
                   setIsProfileModalOpen(true);
                 }}
-                className={`p-2 rounded-lg transition ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-                title="Profile Settings"
               >
-                ⚙️
-              </button>
-              <button 
-                onClick={handleLogout}
-                className={`px-4 py-2 rounded-lg font-bold transition text-sm ${isDarkMode ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'}`}
-              >
-                🚪 Exit
-              </button>
-              <button 
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className={`md:hidden p-2 rounded-lg transition ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-              >
-                {isMobileMenuOpen ? '✕' : '☰'}
-              </button>
-            </div>
+                ⚙️ Profile
+              </Button>
           </div>
+        </header>
 
-          {/* Mobile Menu */}
-          {isMobileMenuOpen && (
-            <div className={`md:hidden pb-4 pt-2 border-t ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-              <div className="grid grid-cols-2 gap-2">
-                {tabItems.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
-                    className={`px-3 py-2 rounded-lg font-bold text-sm transition ${
-                      activeTab === item.id
-                        ? isDarkMode ? 'bg-teal-500/30 text-teal-300' : 'bg-teal-100 text-teal-700'
-                        : isDarkMode ? 'bg-white/5 text-slate-400 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* Desktop Tab Navigation */}
-      <div className={`hidden md:flex border-b ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white/30'}`}>
-        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex space-x-1">
-          {tabItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`px-4 py-4 font-bold border-b-2 transition ${
-                activeTab === item.id
-                  ? isDarkMode ? 'border-teal-400 text-teal-300' : 'border-teal-600 text-teal-700'
-                  : isDarkMode ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-6xl mx-auto space-y-8">
+            {/* TABS CONTENT GOES HERE */}
 
           {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
@@ -985,8 +935,9 @@ export default function TeacherDashboard() {
             </div>
           )}
 
+          </div>
         </div>
-      </div>
+      </main>
 
       {/* CROP MODAL */}
       {isCropModalOpen && (

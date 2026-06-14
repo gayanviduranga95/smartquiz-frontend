@@ -5,6 +5,13 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { API_URL } from '../config';
 import useThemeMode from '../hooks/useThemeMode';
 
+// Shared Components
+import Button from '../components/Button';
+import Card from '../components/Card';
+import Modal from '../components/Modal';
+import Input from '../components/Input';
+import Sidebar from '../components/Sidebar';
+
 export default function StudentDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -16,15 +23,24 @@ export default function StudentDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('smartquiz-user');
-    sessionStorage.clear(); // Clear session storage too just in case
-    // Force a hard redirect to the home page to ensure all state is cleared
+    sessionStorage.clear(); 
     window.location.href = '/';
   };
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useThemeMode();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('find-teachers');
+  const studentTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'quizzes', label: 'My Quizzes', icon: '📝' },
+    { id: 'teachers', label: 'Find Teachers', icon: '🔍' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
+  ];
+
+  const user = { username, role: 'student' };
   const [activeClass, setActiveClass] = useState(null); 
   const [activeQuiz, setActiveQuiz] = useState(null); 
   const [reviewQuiz, setReviewQuiz] = useState(null); 
@@ -467,63 +483,62 @@ export default function StudentDashboard() {
       <div className={`absolute top-[-15%] left-[-10%] w-[40rem] h-[40rem] rounded-full blur-[120px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-teal-600/20' : 'bg-teal-300/40'}`}></div>
       <div className={`absolute bottom-[-10%] right-[-5%] w-[30rem] h-[30rem] rounded-full blur-[100px] pointer-events-none transition-colors duration-1000 ${isDarkMode ? 'bg-cyan-600/10' : 'bg-cyan-300/40'}`}></div>
 
-      {/* GLASSMORPHISM SIDEBAR */}
-      <aside className={`w-64 backdrop-blur-2xl border-r flex flex-col hidden md:flex z-10 shadow-2xl transition-colors duration-500 ${sidebarBg}`}>
-        <div className={`p-6 border-b ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <div 
-            className="flex items-center gap-3 mb-3 cursor-pointer group" 
-            onClick={() => { setActiveTab('my-classes'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); }}
-            role="button" 
-            tabIndex="0" 
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab('my-classes'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); } }}
-            title="Go to My Classes"
-          >
-            <img 
-              src="/assets/logo.png" 
-              alt="SmartQuiz Logo" 
-              className="h-10 md:h-10 object-contain transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
-              loading="lazy"
-            />
-            <div>
-              <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
-              <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student Portal</p>
-            </div>
-          </div>
-        </div>
-        <div className={`p-6 m-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 shadow-[0_0_30px_rgba(20,184,166,0.1)]' : 'bg-white border-slate-200 shadow-md'}`}>
-           <p className={`font-bold text-xs uppercase tracking-widest mb-1 ${isDarkMode ? 'text-teal-300/70' : 'text-teal-600'}`}>Total XP</p>
-           <h2 className={`text-4xl font-black flex items-center gap-2 ${textPrimary}`}>⭐ {totalPoints}</h2>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <button onClick={() => { setActiveTab('my-classes'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'my-classes' && !activeClass ? (isDarkMode ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'bg-teal-50 text-teal-700 border border-teal-200') : (isDarkMode ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800')}`}>📚 My Classes</button>
-          <button onClick={() => { setActiveTab('find-teachers'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'find-teachers' && !activeClass ? (isDarkMode ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'bg-teal-50 text-teal-700 border border-teal-200') : (isDarkMode ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800')}`}>🔍 Course Catalog</button>
-        </nav>
-        <div className={`p-4 border-t ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-          <button onClick={handleLogout} className={`w-full font-bold py-2 rounded-lg transition text-sm border ${isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>Log Out</button>
-        </div>
-      </aside>
+      <Sidebar 
+        isDarkMode={isDarkMode} 
+        activeTab={activeTab} 
+        setActiveTab={(id) => { setActiveTab(id); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); }} 
+        tabs={studentTabs} 
+        user={user} 
+        onLogout={handleLogout} 
+      />
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto z-10 relative pb-24 md:pb-8">
-        {/* MOBILE HEADER */}
-        <div 
-          className="md:hidden mb-6 flex items-center gap-3 cursor-pointer group" 
-          onClick={() => { setActiveTab('my-classes'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); }}
-          role="button" 
-          tabIndex="0" 
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab('my-classes'); setActiveClass(null); setActiveQuiz(null); setReviewQuiz(null); } }}
-          title="Go to My Classes"
-        >
-          <img 
-            src="/assets/logo.png" 
-            alt="SmartQuiz Logo" 
-            className="h-8 object-contain transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
-            loading="lazy"
-          />
-          <div>
-            <h1 className={`text-xl font-black text-transparent bg-clip-text bg-gradient-to-r tracking-wider ${titleGradient}`}>SmartQuiz</h1>
-            <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-teal-500/70' : 'text-teal-600'}`}>Student</p>
+      <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
+        {/* Top Header Actions */}
+        <header className={`p-6 border-b flex items-center justify-between backdrop-blur-md ${isDarkMode ? 'bg-slate-900/90 border-white/10' : 'bg-white/95 border-slate-200'}`}>
+          <div className="flex items-center gap-4">
+             <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`lg:hidden p-3 rounded-2xl transition ${isDarkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}
+              >
+                {isMobileMenuOpen ? '✕' : '☰'}
+              </button>
+              <div>
+                <h2 className={`text-xl font-black ${textPrimary}`}>
+                  {studentTabs.find(t => t.id === activeTab)?.label}
+                </h2>
+                <p className={`text-[10px] font-bold uppercase tracking-widest ${textSecondary}`}>Student Portal</p>
+              </div>
           </div>
-        </div>
+          
+          <div className="flex items-center gap-3">
+             <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="rounded-full w-10 h-10 p-0"
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setShowNotifications(prev => !prev)}
+                className="relative rounded-full w-10 h-10 p-0"
+              >
+                🔔
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </Button>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-6xl mx-auto space-y-8">
+            {/* TABS CONTENT GOES HERE */}
 
         {reviewQuiz ? (
            <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-8 duration-500">
@@ -953,6 +968,8 @@ export default function StudentDashboard() {
             )}
           </div>
         )}
+          </div>
+        </div>
       </main>
 
       {/* MOBILE BOTTOM NAVIGATION */}
