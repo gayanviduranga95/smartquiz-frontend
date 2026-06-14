@@ -696,7 +696,8 @@ export default function StudentDashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {completedQuizzes.map(quiz => {
-                  const scoreRecord = myScores.find(s => s.quizId._id === quiz._id);
+                  const scoreRecord = myScores.find(s => s.quizId?._id === quiz._id);
+                  if (!scoreRecord) return null;
                   const percentage = Math.round((scoreRecord.score / scoreRecord.totalQuestions) * 100);
                   return (
                     <div key={quiz._id} className={`p-6 rounded-2xl border transition-all duration-300 flex flex-col justify-between ${isDarkMode ? 'bg-white/5 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-slate-50 border-slate-200 hover:border-emerald-400 hover:shadow-lg'}`}>
