@@ -405,7 +405,7 @@ export default function TeacherDashboard() {
 
     setIsSaving(true); setSaveMessage('Saving...');
     try {
-      const response = await fetch(`${API_URL}/api/quizzes/save', {
+      const response = await fetch(`${API_URL}/api/quizzes/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
