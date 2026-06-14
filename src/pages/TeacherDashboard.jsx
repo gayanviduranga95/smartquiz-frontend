@@ -349,6 +349,7 @@ export default function TeacherDashboard() {
     formData.append('numQuestions', numQuestions);
     formData.append('ageGroup', quizAgeGroup);
     formData.append('imageOnly', quizImageOnly ? 'true' : 'false');
+    formData.append('teacherId', userId);
     
     try {
       const response = await fetch(`${API_URL}/api/ai/generate`, { method: 'POST', body: formData });
